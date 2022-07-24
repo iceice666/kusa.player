@@ -1,0 +1,5 @@
+aioconsole
+streamlink
+python-vlc
+youtube-dl
+urllib3

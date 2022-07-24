@@ -5,8 +5,11 @@ import typing
 import youtube_dl
 import streamlink
 
-import os
-os.environ["PYTHON_VLC_MODULE_PATH"] = "src/vlc"
+import platform
+if platform.system()=="Windows ":
+    import os
+    os.environ["PYTHON_VLC_MODULE_PATH"] = "./vlc"
+
 import vlc
 
 class music:
@@ -25,27 +28,25 @@ class music:
     playlist = []
     nowplaying={}
 
-    def __init__(self, args: str or tuple = "--no-video"):
+    def __init__(self, args: tuple = ("--no-ts-trust-pcr","--ts-seek-percent","-q","--no-video",)):
         self.player = vlc.Instance(args).media_player_new()
-        self.player.audio_set_volume(25)
+        self.player.audio_set_volume(100)
 
     async def add_track(self, uri):
         parse = urllib3.util.parse_url(uri)
-        print(f'[info]parsing uri {uri}')
+        print(f'[info] Parsing uri {uri}')
         if parse.host is None:
             pass
         elif parse.host == "www.bilibili.com":
             info = await self._fetch_bilibili_url_info(uri)
-        elif parse.host in ['www.youtube.com', 'youtu.be']:
-            try:
-                info = await self._fetch_youtube_url_info(uri)
-            except streamlink.PluginError:
-                info = await self._fetch_url_info(uri)
         else:
             try:
                 info = await self._fetch_url_info(uri)
-            except streamlink.NoPluginError:
+            except streamlink.PluginError or streamlink.NoPluginError:
                 info = {"url":uri}
+                if parse.host in ['www.youtube.com', 'youtu.be']:
+                    info = await self._fetch_youtube_url_info(uri)
+
 
         info['uri']=self.player.get_instance().media_new(info['url'])
 
