@@ -1,4 +1,5 @@
-*/vlc
+
 */test
 */__pycache__/
 
+*.pyc
