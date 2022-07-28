@@ -1,12 +1,14 @@
-import cmd
-import functools
-from tkinter import E
+
 import urllib3
 import json
+
 import asyncio
 from typing import Optional
 import youtube_dl
 import streamlink
+
+from rich.console import Console
+from prompt_toolkit.application import run_in_terminal
 
 
 import platform
@@ -18,7 +20,7 @@ import vlc
 
 
 class Player:
-
+    console=Console()
     http = urllib3.PoolManager(headers={
                                "user-agent": "Mozilla/5.0 (Windows NT 10.0  Win64  x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.5060.114 Safari/537.36 Edg/103.0.1264.62"})
 
@@ -79,7 +81,6 @@ class Player:
         self.player.stop()
 
     async def pause(self):
-        print('[Player] Paused')
         self.player.set_pause(1)
 
     async def resume(self):
@@ -93,9 +94,7 @@ class Player:
             return
 
         url = ''
-        print('[Player] Add Track: ', end='')
         parse = urllib3.util.parse_url(uri)
-        print(f'Parsing uri {uri}')
         if parse.host is None:
             pass
         elif parse.host == "www.bilibili.com":
@@ -156,7 +155,8 @@ class Player:
             return
         self.nowplaying = self.playlist.pop(0)
 
-        print('[Player] Nowplaying: ', self.nowplaying['source'])
+        run_in_terminal(lambda: self.console.print(
+            '[Player] Nowplaying: ', self.nowplaying['source']))
 
         self.player.set_media(self.nowplaying['media'])
         self.player.play()
