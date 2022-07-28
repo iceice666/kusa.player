@@ -13,10 +13,10 @@ class Interface:
 
     # https://inquirerpy.readthedocs.io/en/latest/pages/style.html
     _default_color = InquirerPy.utils.get_style({
-        "questionmark": "Orange",
+        "questionmark": "#ff4500",
         "answermark": "",
-        "answer":  "PowderBlue",
-        "input":  "DarkGreen",
+        "answer":  "#b0e0e6",
+        "input":  "#006400",
         "question":  "",
         "answered_question":  "",
         "instruction": "#abb2bf",
@@ -102,11 +102,12 @@ class Interface:
         self.MUSIC = Player()
         self.console = Console()
         while True:
-            command = await inquirer.text(message="Music >", amark="", style=InquirerPy.utils.get_style({
-                "questionmark": "LightYellow"
-            })).execute_async()
+            command = await inquirer.text(message="Music >", amark="", style=self._default_color).execute_async()
             await asyncio.gather(self.cmd_invoke(command.split(" ")))
 
     def run(self):
-        asyncio.run(self.entrypoint())
-        asyncio.get_running_loop().run_forever()
+        try:
+            asyncio.run(self.entrypoint())
+            asyncio.get_running_loop().run_forever()
+        except KeyboardInterrupt:
+            pass
