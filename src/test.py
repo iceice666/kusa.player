@@ -1,14 +1,13 @@
-from Music import Player
-import asyncio
-import aioconsole
+
+from dis import dis
+from brigadier import CommandDispatcher
+from brigadier.builder import literal, argument
+from brigadier.arguments import *
 
 
-async def main():
-    player = player()
-    await player.add_track(
-        "https://www.bilibili.com/video/BV1yJ411L7ip?spm_id_from=..search-card.all.click")
-
-    # await player.play()
-    await aioconsole.ainput()
-
-asyncio.run(main())
+class aq:
+    async def command_map(self):
+        dispatcher = CommandDispatcher()
+        # exit
+        dispatcher.register(literal('exit').executes(lambda: sys.exit(0)))
+        dispatcher.register(literal('play'))

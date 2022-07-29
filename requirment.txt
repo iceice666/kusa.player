@@ -1,5 +1,6 @@
-aioconsole
 streamlink
+rich
+inquirerpy
 python-vlc
 youtube-dl
 urllib3
