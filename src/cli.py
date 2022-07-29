@@ -15,7 +15,7 @@ class Interface:
     _default_color = InquirerPy.utils.get_style({
         "questionmark": "#ff4500",
         "answermark": "",
-        "answer":  "#b0e0e6",
+        "answer":  "#267cd8",
         "input":  "#006400",
         "question":  "",
         "answered_question":  "",
@@ -60,7 +60,7 @@ class Interface:
                         if not self.MUSIC.player.is_playing():
                             await self.MUSIC.play()
                 case 'vol' | 'volume':
-                    await self.MUSIC.volume(int(cmd_args[0]) if cmd_args else None)
+                    await self.MUSIC.volume(int(cmd_args[0]) if cmd_args and int(cmd_args[0]) > 0 else None)
                 case 'queue':
                     await self.MUSIC.queue()
                 case 'skip':

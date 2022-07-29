@@ -7,20 +7,22 @@ from typing import *
 
 
 class Root:
+    command_map = []
     def __init__(self, name):
         self.name = name
-        self.command_map = []
 
     def add_cmd(self, cmd: 'Command'):
         self.command_map.append(cmd)
 
 
 class Command:
-    def __init__(self, name: str, callback: Callable or Coroutine):
+    args=[]
+    def __init__(self, name: str, callback: Callable or Coroutine, description=""):
         self.name = name
         self.callback = callback
+        self.description=description
 
-    def _dsipatch(self, *args, **kwargs):
+    def _run(self, *args, **kwargs):
         if isinstance(self.callback, callable):
             self.callback(*args, **kwargs)
         elif asyncio.iscoroutinefunction(self.callback):
@@ -28,7 +30,8 @@ class Command:
         elif asyncio.iscoroutine(self.callback):
             asyncio.gather(self.callback)
 
-    def add_argument(self, arg: 'Argument'):
+    def add_argument(self, *args: List['Argument']):
+        self.args.append(*args)
         return self
 
 
@@ -52,11 +55,18 @@ class Argument:
             return True
         except ValueError:
             return False
+    def is_boolean(self,s:str)->bool:
+        return True if s.lower() in ['false', 'true'] else False
+
+    def is_string(self,s:str)->bool:
+        return True if isinstance(input, str) else False
 
     def passing(self, input):
         # integer
-        if (type in ['int', 'integer'] or isinstance(input, int)) and self.is_integer(input):
-            return True
+        if self.is_integer(input): return True
         # float
-        elif (type in ['float', ] or isinstance(input, float)) and self.is_integer(input):
-            return True
+        if self.is_float(input): return True
+        # string
+        if self.is_string(input): return True
+        # boolean
+        if self.is_boolean(input): return True
