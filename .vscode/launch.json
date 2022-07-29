@@ -16,9 +16,9 @@
             "name": "Run test",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/src/test.py",
+            "program": "${workspaceFolder}/test.py",
             "console": "integratedTerminal",
-            "justMyCode": true
+            "justMyCode": false
         }
     ]
 }

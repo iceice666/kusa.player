@@ -151,11 +151,10 @@ class Player:
         if self.playlist == []:
             return
         self.nowplaying = self.playlist.pop(0)
-
+        self.player.set_media(self.nowplaying['media'])
         run_in_terminal(lambda: self.console.print(
             '[Player] Nowplaying: ', self.nowplaying['source']))
 
-        self.player.set_media(self.nowplaying['media'])
         self.player.play()
 
     async def _playing_end(self):

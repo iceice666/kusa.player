@@ -1,9 +1,7 @@
 import atexit
-from dis import dis
+
 import sys
 import asyncio
-
-
 
 
 import InquirerPy
@@ -55,8 +53,14 @@ class Interface:
 
                         if not self.MUSIC.player.is_playing():
                             await self.MUSIC.play()
+
                 case 'vol' | 'volume':
-                    await self.MUSIC.volume(int(cmd_args[0]) if cmd_args and int(cmd_args[0]) > 0 else None)
+                    try:
+                        vol = int(cmd_args.pop(0))
+                    except Exception:
+                        self.console.print(f'Invalid value')
+
+                    await self.MUSIC.volume(vol if cmd_args and vol > 0 else None)
                 case 'nowplaying' | 'np':
                     self.console.print(self.MUSIC.nowplaying)
                 case 'queue':
@@ -100,14 +104,12 @@ class Interface:
                     pass
                 case _:
                     run_in_terminal(
-                        lambda: self.console.print('Unknow command'))
+                        lambda: self.console.print('Unknow command :question:'))
 
         except KeyboardInterrupt:
             pass
         except Exception as e:
             print(f"\n{e}")
-
-
 
     async def entrypoint(self):
         self.console = Console()
@@ -117,12 +119,13 @@ class Interface:
             command = await inquirer.text(message="Music >", amark="", style=self._default_color).execute_async()
             await asyncio.gather(self.dispatch(command.split(" ")))
 
+    def exiting(self):
+        self.console.print(':wave: \nBye~ \nHave a great day~')
+
     def run(self):
-        atexit.register(lambda :self.console.print('Bye~ Have a great day~'))
+        atexit.register(self.exiting)
         try:
             asyncio.run(self.entrypoint())
             asyncio.get_running_loop().run_forever()
         except KeyboardInterrupt:
             sys.exit(0)
-
-
