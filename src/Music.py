@@ -51,9 +51,6 @@ class Player:
 
     async def help_cmd(self): print("help!")
 
-    async def queue(self):
-        print("[Player] Queue \n")
-        print(self.playlist)
 
     async def volume(self, vol: Optional[int] = None):
         print('[Player] Volume ', end='')

@@ -58,9 +58,9 @@ class Interface:
                 case 'vol' | 'volume':
                     await self.MUSIC.volume(int(cmd_args[0]) if cmd_args and int(cmd_args[0]) > 0 else None)
                 case 'nowplaying' | 'np':
-                    pass
+                    self.console.print(self.MUSIC.nowplaying)
                 case 'queue':
-                    await self.MUSIC.queue()
+                    self.console.print(self.MUSIC.playlist)
                 case 'skip':
                     await self.MUSIC.skip()
                 case 'clear':
@@ -77,7 +77,6 @@ class Interface:
                     await self.MUSIC.loop()
                     self.console.print(
                         f'[Player] Now player [red bold]will{"" if self.MUSIC.flag_loop else " not"}[/red bold] loop the queue.')
-
                 case 'repeat':
                     await self.MUSIC.repeat()
                     self.console.print(
