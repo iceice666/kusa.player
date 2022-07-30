@@ -13,7 +13,7 @@ cmd.register(Command('tp')
              )
 
 # test
-a=cmd.execute('tp')      #except 'help'
+cmd.execute('tp')      #except 'help'
 cmd.execute('tp 0 0 0')  #except 'tp to 0 0 0'
 cmd.execute('tp noob')   #except 'tp noob'
 cmd.execute('giya')      #except  None
