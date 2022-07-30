@@ -1,7 +1,19 @@
 
-a=[9,3,333,45]
-b=[3,6]
+from lib.CPD.cpd import *
 
+def help_(): return 'help'
+def tp(player): print(f'{player}')
+def tpp(x, y, z): print(f"tp to {x} {y} {z}")
 
-for av,bv in zip(a,b):
-    print(av,bv)
+cmd = Dispatcher()
+cmd.register(Command('tp')
+             .passing(Arguments().execute(help_))
+             .passing(Arguments(('name', str),).execute(tp))
+             .passing(Arguments(('x', int), ('y', int), ('z', int),).execute(tpp))
+             )
+
+# test
+a=cmd.execute('tp')      #except 'help'
+cmd.execute('tp 0 0 0')  #except 'tp to 0 0 0'
+cmd.execute('tp noob')   #except 'tp noob'
+cmd.execute('giya')      #except  None

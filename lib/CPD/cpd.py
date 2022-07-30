@@ -3,65 +3,62 @@
 
 
 import asyncio
-
-
 from typing import *
 
 
 # A command collection
 class Dispatcher:
-    command_map = {}
+    command_mapping = {}
 
     def register(self, command: 'Command'):
-        c = command()
-        self.command_map[c.name] = c
+        self.command_mapping[command.name] = command
 
-
-class Command:
-    def __init__(self, name):
-        self.name = name
-
-    def argument(self, args: 'Arguments'):
-        return self
-
-    def execute(self, callback: Callable or Coroutine):
-        self.callback = callback
+    def execute(self,input):
+        cmd_args=input.split(" ")
+        _command=self.command_mapping.get(cmd_args.pop(0),None)
+        if _command is not None:
+            _command._execute(cmd_args)
 
 
 class Arguments:
-    pass
+    # tuple pass a name and type of argument
+    def __init__(self, *args: List[tuple] ):
+        self.args = args
+        self._len=len(args)
 
-def tp(x,y,z): return
-cmd = Dispatcher()
-cmd.register(Command('tp')
-             .argument(Arguments(('x', int), ('y', int), ('z', int))).execute(tp)
-             )
-cmd.execute('tp 0 0 0')
+    def execute(self, callback: Callable or Coroutine):
+        self.callback = callback
+        return self
 
+    def _check(self,obj_1,obj_2):
+        return True
 
-class BaseDispatch:
-    command_map = {}
+    def _execute(self, cmd_args: list):
+        for input_arg, definition in zip(cmd_args, self.args):
+            self._check(input_arg, definition)
 
-    def dispatch(self, input: str):
-        self.split(input)
+        self._run_func(cmd_args)
 
-    def split(self, input):
-        return input.split(' ')
-
-    def execute(self, ):
-        pass
-
-    def add_command(name):
-        print(name)
-
-        def inner(func):
-            def warpper(self, *args, **kwargs):
-                self.command_map[name] = {'callback': func, }
-            return warpper
-        return inner
-
-    @add_command('test')
-    def test(self): pass
+    def _run_func(self,cmd_args):
+        if isinstance(self.callback, Awaitable):
+            asyncio.gather(self.callback)
+        elif isinstance(self.callback, Callable):
+            self.callback(*cmd_args)
 
 
-type('Dispatcher', (), {})
+
+class Command:
+    arguments_mapping={}
+    def __init__(self, name):
+        self.name = name
+
+    def passing(self, arg: 'Arguments'):
+        self.arguments_mapping[arg._len]=arg
+        return self
+
+    def _execute(self,cmd_args):
+        self.arguments_mapping[len(cmd_args)]._execute(cmd_args)
+
+
+
+
