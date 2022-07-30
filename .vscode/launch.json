@@ -10,7 +10,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/run.py",
             "console": "integratedTerminal",
-            "justMyCode": false
+            "justMyCode": true
         },
         {
             "name": "Run test",

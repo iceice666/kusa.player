@@ -1,5 +1,5 @@
 
-from lib.CPD.cpd import *
+from GIYA import *
 
 
 def help_(): print('help')
@@ -8,25 +8,23 @@ def tpp(x, y, z): print(f"tp to {x} {y} {z}")
 
 
 cmd = Dispatcher()
-cmd\
-    .register(
-        Command('tp')
-        .option(Arguments().execute(help_))
-        .option(Arguments(('name', str),).execute(tp))
-        .option(Arguments(('x', int), ('y', int), ('z', int),).execute(tpp))
-    )\
-    .register(
-        Command('kill')
-        .option(Arguments().execute())
-        .option(Arguments(('entity', str).execute()))
-    )
+
+
+cmd.register(Command('tp', 'teleport')
+             .argument([], help_)
+             .argument([str, ], tp)
+             .argument([int, int, int], tpp))\
+    .register(Command('kill')
+              .argument([], (lambda *_: print('You killed your self')))
+              .argument([str],
+                        (lambda *_: print(f'You killed a Noob'))))
 
 
 # test
 cmd.execute('tp')  # except 'help'
 cmd.execute('tp 0 0 0')  # except 'tp to 0 0 0'
-cmd.execute('tp noob')  # except 'tp noob'
-cmd.execute('giya')  # except  None
+cmd.execute('teleport noob')  # except 'tp noob'
+cmd.execute('giya')  # except
 
-cmd.execute('kill')  # except 'You killed your self'
-cmd.execute('kill noob')  # except 'You killed a Noob'
+cmd.execute('kill')  # except
+cmd.execute('kill noob')
