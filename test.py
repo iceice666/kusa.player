@@ -2,7 +2,7 @@
 from lib.CPD.cpd import *
 
 def help_(): return 'help'
-def tp(player): print(f'{player}')
+def tp(player): print(f'tp {player}')
 def tpp(x, y, z): print(f"tp to {x} {y} {z}")
 
 cmd = Dispatcher()
