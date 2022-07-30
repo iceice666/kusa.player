@@ -1,22 +1,25 @@
+import atexit
+from dis import dis
 import sys
 import asyncio
 
-from src.Music import Player
 
 import InquirerPy
 from InquirerPy import inquirer
 from rich.console import Console
 from prompt_toolkit.application import run_in_terminal
 
+from src.Music import Player
+
 
 class Interface:
 
     # https://inquirerpy.readthedocs.io/en/latest/pages/style.html
     _default_color = InquirerPy.utils.get_style({
-        "questionmark": "Orange",
+        "questionmark": "#ff4500",
         "answermark": "",
-        "answer":  "PowderBlue",
-        "input":  "DarkGreen",
+        "answer":  "#267cd8",
+        "input":  "#006400",
         "question":  "",
         "answered_question":  "",
         "instruction": "#abb2bf",
@@ -35,22 +38,13 @@ class Interface:
         "spinner_text":  ""
     })
 
-    async def cmd_invoke(self, cmd_args):
+    async def dispatch(self, cmd_args):
         if not cmd_args:
             return await self.MUSIC.help_cmd()
         try:
-            match cmd_args.pop(0):
+            match cmd_args.pop(0).lower():
 
-                case 'exit':
-                    self.console.print('Bye~ Have a great day~')
-                    sys.exit(0)
-                case 'exec':
-                    for cmd in cmd_args:
-                        exec(cmd)
-                case 'music_exec':
-                    await self.MUSIC.execute(cmd_args)
-                case 'checkrl':
-                    print(asyncio.all_tasks(asyncio.get_running_loop()))
+                # Music player command
                 case 'play' | 'p':
                     for uri in cmd_args:
                         await self.MUSIC.add_track(uri)
@@ -60,9 +54,24 @@ class Interface:
                         if not self.MUSIC.player.is_playing():
                             await self.MUSIC.play()
                 case 'vol' | 'volume':
-                    await self.MUSIC.volume(int(cmd_args[0]) if cmd_args else None)
+                    if not cmd_args:  # cmd_args is []
+                        self.console.print(f"[Player] Volume: {await self.MUSIC.volume(None)}")
+                        return
+                    else:
+                        vol = int(cmd_args[0])
+                        prev_vol = await self.MUSIC.volume()
+                        if vol > 0:
+                            await self.MUSIC.volume(vol)
+                            self.console.print(
+                                f"[Player] Volume: {prev_vol} => {vol}")
+                        else:
+                            self.console.print(f"[Player] Volume: {await self.MUSIC.volume(None)}")
+                            return
+
+                case 'nowplaying' | 'np':
+                    self.console.print(self.MUSIC.nowplaying)
                 case 'queue':
-                    await self.MUSIC.queue()
+                    self.console.print(self.MUSIC.playlist)
                 case 'skip':
                     await self.MUSIC.skip()
                 case 'clear':
@@ -75,18 +84,29 @@ class Interface:
                     await self.MUSIC.pause()
                 case 'resume' | 're':
                     await self.MUSIC.resume()
-                case 'nowplaying' | 'np':
-                    pass
                 case 'loop':
-                    self.console.print(
-                        '[Player] Now player will loop the queue.')
                     await self.MUSIC.loop()
-                case 'repeat':
                     self.console.print(
-                        '[Player] Now player will repeat the current song.')
+                        f'[Player] Now player [red bold]will{"" if self.MUSIC.flag_loop else " not"}[/red bold] loop the queue.')
+                case 'repeat':
                     await self.MUSIC.repeat()
+                    self.console.print(
+                        f'[Player] Now player [red bold]will{"" if self.MUSIC.flag_repeat else " not"}[/red bold] repeat the song which is playing.')
                 case 'pos' | 'position':
                     await self.MUSIC.position(float(cmd_args[0]) if cmd_args else None)
+
+                # exit
+                case 'exit':
+                    sys.exit(0)
+
+                # for debug commands
+                case '_exec':
+                    for cmd in cmd_args:
+                        exec(cmd)
+                case '_music_exec':
+                    await self.MUSIC.execute(cmd_args)
+                case '_checkrl':
+                    print(asyncio.all_tasks(asyncio.get_running_loop()))
                 case '':
                     pass
                 case _:
@@ -99,14 +119,17 @@ class Interface:
             print(f"\n{e}")
 
     async def entrypoint(self):
-        self.MUSIC = Player()
         self.console = Console()
+        self.MUSIC = Player()
+
         while True:
-            command = await inquirer.text(message="Music >", amark="", style=InquirerPy.utils.get_style({
-                "questionmark": "LightYellow"
-            })).execute_async()
-            await asyncio.gather(self.cmd_invoke(command.split(" ")))
+            command = await inquirer.text(message="Music >", amark="", style=self._default_color).execute_async()
+            await asyncio.gather(self.dispatch(command.split(" ")))
 
     def run(self):
-        asyncio.run(self.entrypoint())
-        asyncio.get_running_loop().run_forever()
+        atexit.register(lambda: self.console.print('Bye~ Have a great day~'))
+        try:
+            asyncio.run(self.entrypoint())
+            asyncio.get_running_loop().run_forever()
+        except KeyboardInterrupt:
+            sys.exit(0)
