@@ -54,7 +54,20 @@ class Interface:
                         if not self.MUSIC.player.is_playing():
                             await self.MUSIC.play()
                 case 'vol' | 'volume':
-                    await self.MUSIC.volume(int(cmd_args[0]) if cmd_args and int(cmd_args[0]) > 0 else None)
+                    if not cmd_args:  # cmd_args is []
+                        self.console.print(f"[Player] Volume: {await self.MUSIC.volume(None)}")
+                        return
+                    else:
+                        vol = int(cmd_args[0])
+                        prev_vol = await self.MUSIC.volume()
+                        if vol > 0:
+                            await self.MUSIC.volume(vol)
+                            self.console.print(
+                                f"[Player] Volume: {prev_vol} => {vol}")
+                        else:
+                            self.console.print(f"[Player] Volume: {await self.MUSIC.volume(None)}")
+                            return
+
                 case 'nowplaying' | 'np':
                     self.console.print(self.MUSIC.nowplaying)
                 case 'queue':
