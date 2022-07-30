@@ -3,6 +3,7 @@
 
 
 import asyncio
+import re
 from typing import *
 
 
@@ -12,6 +13,7 @@ class Dispatcher:
 
     def register(self, command: 'Command'):
         self.command_mapping[command.name] = command
+        return self
 
     def execute(self, input):
         cmd_args = input.split(" ")
@@ -23,7 +25,7 @@ class Dispatcher:
 class Arguments:
     class Checker:
         @staticmethod
-        def is_integer( s: str) -> bool:
+        def is_integer(s: str) -> bool:
             try:
                 int(s)
             except ValueError:
@@ -31,7 +33,7 @@ class Arguments:
             return True
 
         @staticmethod
-        def is_float( s: str) -> bool:
+        def is_float(s: str) -> bool:
             if s.lower() in ["nan", "infinity"]:
                 return False
             try:
@@ -83,7 +85,7 @@ class Command:
     def __init__(self, name):
         self.name = name
 
-    def passing(self, arg: 'Arguments'):
+    def option(self, arg: 'Arguments'):
         self.arguments_mapping[arg._len] = arg
         return self
 
