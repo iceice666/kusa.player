@@ -1,41 +1,38 @@
-import atexit
-from dis import dis
-import sys
 import asyncio
-
+import atexit
+import sys
 
 import InquirerPy
 from InquirerPy import inquirer
+from prompt_toolkit.application import in_terminal
 from rich.console import Console
-from prompt_toolkit.application import run_in_terminal
 
 from src.Music import Player
 
 
 class Interface:
-
     # https://inquirerpy.readthedocs.io/en/latest/pages/style.html
     _default_color = InquirerPy.utils.get_style({
         "questionmark": "#ff4500",
         "answermark": "",
-        "answer":  "#267cd8",
-        "input":  "#006400",
-        "question":  "",
-        "answered_question":  "",
+        "answer": "#267cd8",
+        "input": "#006400",
+        "question": "",
+        "answered_question": "",
         "instruction": "#abb2bf",
-        "long_instruction":  "#abb2bf",
-        "pointer":  "#61afef",
-        "checkbox":  "#98c379",
+        "long_instruction": "#abb2bf",
+        "pointer": "#61afef",
+        "checkbox": "#98c379",
         "separator": "",
-        "skipped":  "#5c6370",
+        "skipped": "#5c6370",
         "validator": "",
-        "marker":  "#e5c07b",
+        "marker": "#e5c07b",
         "fuzzy_prompt": "#c678dd",
         "fuzzy_info": "#abb2bf",
         "fuzzy_border": "#4b5263",
         "fuzzy_match": "#c678dd",
         "spinner_pattern": "#e5c07b",
-        "spinner_text":  ""
+        "spinner_text": ""
     })
 
     async def dispatch(self, cmd_args):
@@ -46,6 +43,7 @@ class Interface:
 
                 # Music player command
                 case 'play' | 'p':
+                    if not cmd_args: return
                     for uri in cmd_args:
                         await self.MUSIC.add_track(uri)
                         self.console.print(
@@ -110,8 +108,8 @@ class Interface:
                 case '':
                     pass
                 case _:
-                    run_in_terminal(
-                        lambda: self.console.print('Unknow command'))
+                    async with in_terminal():
+                        self.console.print('Unknown command')
 
         except KeyboardInterrupt:
             pass
@@ -123,7 +121,7 @@ class Interface:
         self.MUSIC = Player()
 
         while True:
-            command = await inquirer.text(message="Music >", amark="", style=self._default_color).execute_async()
+            command = str(await inquirer.text(message="Music >", amark="", style=self._default_color).execute_async())
             await asyncio.gather(self.dispatch(command.split(" ")))
 
     def run(self):
