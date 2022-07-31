@@ -6,7 +6,7 @@ from typing import Optional
 import streamlink
 import urllib3
 import youtube_dl
-from prompt_toolkit.application import run_in_terminal
+from prompt_toolkit.application import in_terminal
 from rich.console import Console
 
 if platform.system() == "Windows":
@@ -43,15 +43,16 @@ class Player:
     def event_attach(self, event, callback: callable, *args, **kwargs):
         self.player.event_manager().event_attach(event, callback, args, kwargs)
 
-    async def execute(self, cmd_args):
+    @staticmethod
+    async def execute(cmd_args):
         for c in cmd_args:
             exec(c.replace("$", "self."))
 
-    async def help_cmd(self): print("help!")
+    async def help_cmd(self):
+        self.console.print("help!")
 
     async def queue(self):
-        print("[Player] Queue \n")
-        print(self.playlist)
+        return self.playlist
 
     async def volume(self, vol: Optional[int] = None):
         if vol is None:
@@ -60,12 +61,8 @@ class Player:
             self.player.audio_set_volume(vol)
         return self.player.audio_get_volume()
 
-    async def position(self, pos: Optional[int] = None):
-        print('[Player] Position ', end='')
-        if pos is None:
-            print(
-                f"{int(self.player.get_time() / 1000)}s / {int(self.player.get_length() / 1000)}s ({int(self.player.get_position() * 100)}%)")
-        elif 1 > pos >= 0:
+    async def position(self, pos: int | float):
+        if 1 > pos >= 0:
             self.player.set_position(pos)
         elif 1 <= pos < self.player.get_length():
             self.player.set_position(pos / self.player.get_length())
@@ -84,20 +81,16 @@ class Player:
         self.player.set_pause(1)
 
     async def resume(self):
-        print('[Player] Resumed')
         self.player.set_pause(0)
 
     async def clear(self):
         self.playlist = []
 
     async def add_track(self, uri):
-        if uri == '':
-            return
 
-        url = ''
         parse = urllib3.util.parse_url(uri)
         if parse.host is None:
-            pass
+            return
         elif parse.host == "www.bilibili.com":
             url = await self._fetch_bilibili_url_info(uri)
         else:
@@ -116,14 +109,17 @@ class Player:
 
         self.playlist.append(info)
 
-    def _make_info(self, **kwargs):
+    @staticmethod
+    def _make_info(**kwargs):
         return kwargs
 
-    async def _fetch_url_info(self, url):
+    @staticmethod
+    async def _fetch_url_info(url):
         a = (streamlink.streams(url))['best']
         return a.url
 
-    async def _fetch_youtube_url_info(self, url):
+    @staticmethod
+    async def _fetch_youtube_url_info(url):
         with youtube_dl.YoutubeDL({"quiet": True}) as ydl:
             song_info = ydl.extract_info(
                 url, download=False)
@@ -135,29 +131,29 @@ class Player:
         return url
 
     async def _fetch_bilibili_url_info(self, url):
-        bvid = ((urllib3.util.parse_url(url)).path).split('/')[-1]
+        bvid = (urllib3.util.parse_url(url)).path.split('/')[-1]
 
         cid = json.loads(
             (self.http.request(
-                'GET', f'https://api.bilibili.com/x/player/pagelist?bvid={bvid}'))
-                .data.decode('utf-8')
+                'GET', f'https://api.bilibili.com/x/player/pagelist?bvid={bvid}')).data.decode('utf-8')
         )['data'][0]['cid']
 
         urls = json.loads(
             (self.http.request(
-                'GET', f'http://api.bilibili.com/x/player/playurl?cid={cid}&bvid={bvid}&platform=html5'))
-                .data.decode('utf-8')
+                'GET', f'https://api.bilibili.com/x/player/playurl?cid={cid}&bvid={bvid}&platform=html5')).data.decode(
+                'utf-8')
         )['data']['durl']
 
         return urls[0]['url']
 
     async def play(self):
-        if self.playlist == []:
+        if not self.playlist:
             return
         self.nowplaying = self.playlist.pop(0)
         self.player.set_media(self.nowplaying['media'])
-        run_in_terminal(lambda: self.console.print(
-            '[Player] Nowplaying: ', self.nowplaying['source']))
+        async with in_terminal():
+            self.console.print(
+                '[Player] Nowplaying: ', self.nowplaying['source'])
 
         self.player.play()
 
@@ -170,3 +166,8 @@ class Player:
         self.nowplaying = {}
 
         await self.play()
+
+
+class Search:
+    def __init__(self):
+        pass

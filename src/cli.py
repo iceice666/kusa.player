@@ -45,12 +45,16 @@ class Interface:
                 case 'play' | 'p':
                     if not cmd_args: return
                     for uri in cmd_args:
+                        if uri == '':
+                            continue
+
                         await self.MUSIC.add_track(uri)
                         self.console.print(
                             f'[Player] Add Track: Parsing uri {uri}')
 
                         if not self.MUSIC.player.is_playing():
                             await self.MUSIC.play()
+
                 case 'vol' | 'volume':
                     if not cmd_args:  # cmd_args is []
                         self.console.print(f"[Player] Volume: {await self.MUSIC.volume(None)}")
@@ -68,32 +72,54 @@ class Interface:
 
                 case 'nowplaying' | 'np':
                     self.console.print(self.MUSIC.nowplaying)
+
                 case 'queue':
+                    self.console.print("[Player] Queue \n")
                     self.console.print(self.MUSIC.playlist)
+
                 case 'skip':
                     await self.MUSIC.skip()
+
                 case 'clear':
                     await self.MUSIC.clear()
+
                 case 'stop':
                     await self.MUSIC.clear()
                     await self.MUSIC.skip()
+
                 case 'pause' | 'pa':
                     self.console.print('[Player] Paused')
                     await self.MUSIC.pause()
+
                 case 'resume' | 're':
+                    self.console.print('[Player] Resumed')
                     await self.MUSIC.resume()
+
                 case 'loop':
                     await self.MUSIC.loop()
                     self.console.print(
-                        f'[Player] Now player [red bold]will{"" if self.MUSIC.flag_loop else " not"}[/red bold] loop the queue.')
+                        '[Player] Now player [red bold]will{}[/red bold]loop the queue.'.format(
+                            " " if self.MUSIC.flag_loop else " not "))
+
                 case 'repeat':
                     await self.MUSIC.repeat()
                     self.console.print(
-                        f'[Player] Now player [red bold]will{"" if self.MUSIC.flag_repeat else " not"}[/red bold] repeat the song which is playing.')
-                case 'pos' | 'position':
-                    await self.MUSIC.position(float(cmd_args[0]) if cmd_args else None)
+                        '[Player] Now player [red bold]will{}[/red bold]repeat the song which is playing.'.format(
+                            "" if self.MUSIC.flag_repeat else " not "))
 
-                # exit
+                case 'pos' | 'position':
+                    pos = float(cmd_args[0])
+                    if pos is None:
+                        print(
+                            "[Player] Position {}s / {}s ({}%)".format(
+                                int(self.MUSIC.player.get_time() / 1000),
+                                int(self.MUSIC.player.get_length() / 1000),
+                                int(self.MUSIC.player.get_position() * 100)
+                            ))
+                    else:
+                        await self.MUSIC.position(pos)
+
+                    # exit
                 case 'exit':
                     sys.exit(0)
 
