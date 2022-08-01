@@ -9,6 +9,8 @@ import youtube_dl
 from prompt_toolkit.application import in_terminal
 from rich.console import Console
 
+from CONFIG import *
+
 if platform.system() == "Windows":
     import os
 
@@ -16,11 +18,17 @@ if platform.system() == "Windows":
 
 import vlc
 
+http = urllib3.PoolManager(headers={
+    "user-agent": "Mozilla/5.0 (Windows NT 10.0  Win64  x64) AppleWebKit/537.36 (KHTML, like Gecko)"
+                  "Chrome/103.0.5060.114 Safari/537.36 Edg/103.0.1264.62"})
+
+
+def send_get_request(url) -> dict:
+    return json.loads((http.request('GET', url)).data.decode('utf-8'))
+
 
 class Player:
     console = Console()
-    http = urllib3.PoolManager(headers={
-        "user-agent": "Mozilla/5.0 (Windows NT 10.0  Win64  x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.5060.114 Safari/537.36 Edg/103.0.1264.62"})
 
     flag_repeat: bool = False
     flag_loop: bool = False
@@ -102,7 +110,6 @@ class Player:
                     url = await self._fetch_youtube_url_info(uri)
 
         info = self._make_info(
-            media=self.player.get_instance().media_new(url),
             url=url,
             source=uri
         )
@@ -130,19 +137,18 @@ class Player:
         # with open('songinfo.json','w',encoding='utf-8') as f:f.write(str(song_info))
         return url
 
-    async def _fetch_bilibili_url_info(self, url):
-        bvid = (urllib3.util.parse_url(url)).path.split('/')[-1]
+    @staticmethod
+    async def _fetch_bilibili_url_info(*, _, url=None, bvid=None):
+        if bvid is None and url is None:
+            return None
+        elif url is None:
+            pass
+        elif bvid is None:
+            bvid = (urllib3.util.parse_url(url)).path.split('/')[-1]
 
-        cid = json.loads(
-            (self.http.request(
-                'GET', f'https://api.bilibili.com/x/player/pagelist?bvid={bvid}')).data.decode('utf-8')
-        )['data'][0]['cid']
+        cid = send_get_request(f'https://api.bilibili.com/x/player/pagelist?bvid={bvid}')['data'][0]['cid']
 
-        urls = json.loads(
-            (self.http.request(
-                'GET', f'https://api.bilibili.com/x/player/playurl?cid={cid}&bvid={bvid}&platform=html5')).data.decode(
-                'utf-8')
-        )['data']['durl']
+        urls = send_get_request(f'https://api.bilibili.com/x/player/playurl?cid={cid}&bvid={bvid}&platform=html5')['data']['durl']
 
         return urls[0]['url']
 
@@ -150,7 +156,7 @@ class Player:
         if not self.playlist:
             return
         self.nowplaying = self.playlist.pop(0)
-        self.player.set_media(self.nowplaying['media'])
+        self.player.set_media(self.player.get_instance().media_new(self.nowplaying['url']))
         async with in_terminal():
             self.console.print(
                 '[Player] Nowplaying: ', self.nowplaying['source'])
@@ -169,5 +175,34 @@ class Player:
 
 
 class Search:
-    def __init__(self):
-        pass
+
+    @staticmethod
+    async def youtube(searching):
+        searched_list = send_get_request(
+            f"https://www.googleapis.com/youtube/v3/search?part=snippet&"
+            f"q={searching}&key={YOUTUBE_API}&maxResults={30}"
+            "type=video&"
+        )['item']
+
+        searched_result = []
+        for i in searched_list:
+            searched_result.append({
+                'type': 'YOUTUBE',
+                'author': i['snippet']['channelTitle'],
+                'title': i['snippet']['title'],
+                'vidId': i['id']['videoId']})
+
+        return searched_result
+
+    @staticmethod
+    async def bilibili(searching):
+        searched_list = send_get_request(f'https://api.bilibili.com/x/web-interface/search/all/v2?keyword={searching}')['data']['result'][-1]['data']
+        searched_result = []
+        for i in searched_list:
+            searched_result.append({
+                'type': 'BILIBILI',
+                'author': i['author'],
+                'title': str(i['title']).replace('<em class="keyword">', '').replace('</em>', ''),
+                'vidId': i['bvid']
+            })
+        return searched_result

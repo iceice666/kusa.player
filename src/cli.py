@@ -119,7 +119,10 @@ class Interface:
                     else:
                         await self.MUSIC.position(pos)
 
-                    # exit
+                case 's' | 'search':
+                    pass
+
+                # exit
                 case 'exit':
                     sys.exit(0)
 
