@@ -98,18 +98,17 @@ class Interface:
                 case 'loop':
                     await self.MUSIC.loop()
                     self.console.print(
-                        '[Player] Now player [red bold]will{}[/red bold]loop the queue.'.format(
-                            " " if self.MUSIC.flag_loop else " not "))
+                        '[Player] Now player [red bold]will{}[/red bold] loop the queue.'.format(
+                            " " if self.MUSIC.flag_loop else " not"))
 
                 case 'repeat':
                     await self.MUSIC.repeat()
                     self.console.print(
-                        '[Player] Now player [red bold]will{}[/red bold]repeat the song which is playing.'.format(
-                            "" if self.MUSIC.flag_repeat else " not "))
+                        '[Player] Now player [red bold]will{}[/red bold] repeat the song which is playing.'.format(
+                            "" if self.MUSIC.flag_repeat else " not"))
 
                 case 'pos' | 'position':
-                    pos = float(cmd_args[0])
-                    if pos is None:
+                    if not cmd_args:
                         print(
                             "[Player] Position {}s / {}s ({}%)".format(
                                 int(self.MUSIC.player.get_time() / 1000),
@@ -117,7 +116,7 @@ class Interface:
                                 int(self.MUSIC.player.get_position() * 100)
                             ))
                     else:
-                        await self.MUSIC.position(pos)
+                        await self.MUSIC.position(float(cmd_args[0]))
 
                 case 's' | 'search':
                     pass

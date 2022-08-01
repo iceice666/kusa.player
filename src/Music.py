@@ -1,6 +1,7 @@
 import asyncio
 import json
 import platform
+import time
 from typing import Optional
 
 import streamlink
@@ -51,8 +52,7 @@ class Player:
     def event_attach(self, event, callback: callable, *args, **kwargs):
         self.player.event_manager().event_attach(event, callback, args, kwargs)
 
-    @staticmethod
-    async def execute(cmd_args):
+    async def execute(self, cmd_args):
         for c in cmd_args:
             exec(c.replace("$", "self."))
 
@@ -95,23 +95,12 @@ class Player:
         self.playlist = []
 
     async def add_track(self, uri):
-
-        parse = urllib3.util.parse_url(uri)
-        if parse.host is None:
-            return
-        elif parse.host == "www.bilibili.com":
-            url = await self._fetch_bilibili_url_info(uri)
-        else:
-            try:
-                url = await self._fetch_url_info(uri)
-            except (streamlink.PluginError, streamlink.NoPluginError, AttributeError):
-                url = uri
-                if parse.host in ['www.youtube.com', 'youtu.be']:
-                    url = await self._fetch_youtube_url_info(uri)
+        url = await self._fetch_url(uri)
 
         info = self._make_info(
             url=url,
-            source=uri
+            source=uri,
+            expired_time=int(time.time())+3600
         )
 
         self.playlist.append(info)
@@ -120,25 +109,48 @@ class Player:
     def _make_info(**kwargs):
         return kwargs
 
+    async def _fetch_url(self, uri):
+        parse = urllib3.util.parse_url(uri)
+        if parse.host is None:
+            return
+        elif parse.host == "www.bilibili.com":
+            url = await self._fetch_bilibili_url_info(url=uri)
+        else:
+            try:
+                url = await self._fetch_url_info(uri)
+            except (streamlink.PluginError, streamlink.NoPluginError, AttributeError):
+                url = uri
+                if parse.host in ['www.youtube.com', 'youtu.be']:
+                    url = await self._fetch_youtube_url_info(url=uri)
+
+        return url
+
     @staticmethod
     async def _fetch_url_info(url):
         a = (streamlink.streams(url))['best']
         return a.url
 
     @staticmethod
-    async def _fetch_youtube_url_info(url):
+    async def _fetch_youtube_url_info(*, url=None, vidId=None):
+        if url is None and vidId is None:
+            return None
+        elif vidId is None:
+            pass
+        elif url is None:
+            url = f'https://youtu.be/{vidId}'
+
         with youtube_dl.YoutubeDL({"quiet": True}) as ydl:
             song_info = ydl.extract_info(
                 url, download=False)
+
         try:
             url = song_info["formats"][0]["fragment_base_url"]
         except KeyError:
             url = song_info["formats"][0]["url"]
-        # with open('songinfo.json','w',encoding='utf-8') as f:f.write(str(song_info))
         return url
 
     @staticmethod
-    async def _fetch_bilibili_url_info(*, _, url=None, bvid=None):
+    async def _fetch_bilibili_url_info(*, url=None, bvid=None):
         if bvid is None and url is None:
             return None
         elif url is None:
@@ -146,9 +158,11 @@ class Player:
         elif bvid is None:
             bvid = (urllib3.util.parse_url(url)).path.split('/')[-1]
 
-        cid = send_get_request(f'https://api.bilibili.com/x/player/pagelist?bvid={bvid}')['data'][0]['cid']
+        cid = send_get_request(
+            f'https://api.bilibili.com/x/player/pagelist?bvid={bvid}')['data'][0]['cid']
 
-        urls = send_get_request(f'https://api.bilibili.com/x/player/playurl?cid={cid}&bvid={bvid}&platform=html5')['data']['durl']
+        urls = send_get_request(
+            f'https://api.bilibili.com/x/player/playurl?cid={cid}&bvid={bvid}&platform=html5')['data']['durl']
 
         return urls[0]['url']
 
@@ -156,7 +170,13 @@ class Player:
         if not self.playlist:
             return
         self.nowplaying = self.playlist.pop(0)
-        self.player.set_media(self.player.get_instance().media_new(self.nowplaying['url']))
+        if time.time() > self.nowplaying['expired_time']:
+            self.console.print(
+                '[Player] [yellow]This link expired, re-fetching...[/yellow]')
+        self.nowplaying['url'] = await self._fetch_url(self.nowplaying['source'])
+
+        self.player.set_media(
+            self.player.get_instance().media_new(self.nowplaying['url']))
         async with in_terminal():
             self.console.print(
                 '[Player] Nowplaying: ', self.nowplaying['source'])
@@ -180,9 +200,9 @@ class Search:
     async def youtube(searching):
         searched_list = send_get_request(
             f"https://www.googleapis.com/youtube/v3/search?part=snippet&"
-            f"q={searching}&key={YOUTUBE_API}&maxResults={30}"
-            "type=video&"
-        )['item']
+            f"q={searching.replace(' ', '+')}&key={YOUTUBE_API}&maxResults=20&"
+            "type=video"
+        )['items']
 
         searched_result = []
         for i in searched_list:
@@ -196,7 +216,8 @@ class Search:
 
     @staticmethod
     async def bilibili(searching):
-        searched_list = send_get_request(f'https://api.bilibili.com/x/web-interface/search/all/v2?keyword={searching}')['data']['result'][-1]['data']
+        searched_list = send_get_request(
+            f'https://api.bilibili.com/x/web-interface/search/all/v2?keyword={searching}')['data']['result'][-1]['data']
         searched_result = []
         for i in searched_list:
             searched_result.append({
