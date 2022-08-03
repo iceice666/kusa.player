@@ -1,6 +1,7 @@
+import asyncio
+
 from src.cli import Interface
 
 
-CLI = Interface()
-
-CLI.run()
+asyncio.run(Interface().entrypoint())
+asyncio.get_running_loop().run_forever()
