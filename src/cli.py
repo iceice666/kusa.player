@@ -126,6 +126,8 @@ class Interface:
                 b = False
                 y = True
                 keyword = None
+                choices = []
+                fetch_result = []
 
                 for i in cmd_args:
                     if i.startswith('-'):
@@ -136,13 +138,16 @@ class Interface:
                                 y = True
                     else:
                         keyword = i
-
                 if keyword is None:
                     return
                 elif b:
-                    result = Search.bilibili(keyword)
+                    fetch_result = await Search.bilibili(keyword)
                 elif y:
-                    result = Search.youtube(keyword)
+                    fetch_result = await Search.youtube(keyword)
+
+                for i in fetch_result:
+                    choices.append(i['title'])
+
             # exit
             case 'exit':
                 sys.exit(0)
