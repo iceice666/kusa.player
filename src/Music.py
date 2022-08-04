@@ -94,16 +94,27 @@ class Player:
     async def clear(self):
         self.playlist = []
 
-    async def add_track(self, uri):
-        url = await self._fetch_url(uri)
+    async def add_track(self, uri=None, vid_id=None, website=None, url=None):
+
+        if website is None:
+            url = await self._fetch_url(uri)
+        elif website.upper() == 'YOUTUBE' and vid_id is not None:
+            uri = f'https://youtu.be/{vid_id}'
+            url = await self._fetch_youtube_url_info(url=uri)
+        elif website.upper() == 'BILIBILI' and vid_id is not None:
+            uri = f'https://www.bilibili.com/video/{vid_id}'
+            url = await self._fetch_bilibili_url_info(url=uri)
 
         info = self._make_info(
             url=url,
             source=uri,
-            expired_time=int(time.time())+3600
+            expired_time=int(time.time()) + 3600
         )
 
         self.playlist.append(info)
+
+        if not self.player.is_playing():
+            await self.play()
 
     @staticmethod
     def _make_info(**kwargs):
@@ -127,17 +138,10 @@ class Player:
 
     @staticmethod
     async def _fetch_url_info(url):
-        a = (streamlink.streams(url))['best']
-        return a.url
+        return (streamlink.streams(url))['best'].url
 
     @staticmethod
-    async def _fetch_youtube_url_info(*, url=None, vidId=None):
-        if url is None and vidId is None:
-            return None
-        elif vidId is None:
-            pass
-        elif url is None:
-            url = f'https://youtu.be/{vidId}'
+    async def _fetch_youtube_url_info(*, url):
 
         with youtube_dl.YoutubeDL({"quiet": True}) as ydl:
             song_info = ydl.extract_info(
@@ -150,13 +154,9 @@ class Player:
         return url
 
     @staticmethod
-    async def _fetch_bilibili_url_info(*, url=None, bvid=None):
-        if bvid is None and url is None:
-            return None
-        elif url is None:
-            pass
-        elif bvid is None:
-            bvid = (urllib3.util.parse_url(url)).path.split('/')[-1]
+    async def _fetch_bilibili_url_info(*, url):
+
+        bvid = (urllib3.util.parse_url(url)).path.split('/')[-1]
 
         cid = send_get_request(
             f'https://api.bilibili.com/x/player/pagelist?bvid={bvid}')['data'][0]['cid']
@@ -173,7 +173,7 @@ class Player:
         if time.time() > self.nowplaying['expired_time']:
             self.console.print(
                 '[Player] [yellow]This link expired, re-fetching...[/yellow]')
-        self.nowplaying['url'] = await self._fetch_url(self.nowplaying['source'])
+            self.nowplaying['url'] = await self._fetch_url(self.nowplaying['source'])
 
         self.player.set_media(
             self.player.get_instance().media_new(self.nowplaying['url']))
@@ -204,13 +204,15 @@ class Search:
             "type=video"
         )['items']
 
-        searched_result = []
+        searched_result = {}
         for i in searched_list:
-            searched_result.append({
-                'type': 'YOUTUBE',
-                'author': i['snippet']['channelTitle'],
-                'title': i['snippet']['title'],
-                'vidId': i['id']['videoId']})
+            title = i['snippet']['title']
+            searched_result[title] = \
+                ({
+                    'platform': 'YOUTUBE',
+                    'author': i['snippet']['channelTitle'],
+                    'title': title,
+                    'vidId': i['id']['videoId']})
 
         return searched_result
 
@@ -218,15 +220,15 @@ class Search:
     async def bilibili(searching):
         searched_list = send_get_request(
             f'https://api.bilibili.com/x/web-interface/search/all/v2?keyword={searching}')['data']['result'][-1]['data']
-        searched_result = []
+        searched_result = {}
         for i in searched_list:
-            searched_result.append({
-                'type': 'BILIBILI',
-                'author': i['author'],
-                'title': str(i['title']).replace('<em class="keyword">', '').replace('</em>', ''),
-                'vidId': i['bvid']
-            })
+            title = str(i['title']).replace(
+                '<em class="keyword">', '').replace('</em>', '')
+            searched_result[title] = \
+                ({
+                    'platform': 'BILIBILI',
+                    'author': i['author'],
+                    'title': title,
+                    'vidId': i['bvid']
+                })
         return searched_result
-
-
-

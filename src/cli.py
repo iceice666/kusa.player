@@ -4,6 +4,7 @@ import sys
 
 import InquirerPy
 from InquirerPy import inquirer
+from InquirerPy.base import Choice
 from prompt_toolkit.application import in_terminal
 from rich.console import Console
 
@@ -46,7 +47,8 @@ class Interface:
 
             # Music player command
             case 'play' | 'p':
-                if not cmd_args: return
+                if not cmd_args:
+                    return
                 for uri in cmd_args:
                     if uri == '':
                         continue
@@ -54,9 +56,6 @@ class Interface:
                     await self.MUSIC.add_track(uri)
                     self.console.print(
                         f'[Console] Add Track: Parsing uri {uri}')
-
-                    if not self.MUSIC.player.is_playing():
-                        await self.MUSIC.play()
 
             case 'vol' | 'volume':
                 if not cmd_args:
@@ -80,7 +79,7 @@ class Interface:
                 self.console.print("[Console] Queue \n")
                 self.console.print(self.MUSIC.playlist)
 
-            case 'skip':
+            case 'sk' | 'skip':
                 await self.MUSIC.skip()
 
             case 'clear':
@@ -125,9 +124,9 @@ class Interface:
                 # init
                 b = False
                 y = True
-                keyword = None
-                choices = []
-                fetch_result = []
+                keyword = ''
+                choices: list[Choice] = [Choice('Cancel', enabled=True)]
+                fetch_result = {}
 
                 for i in cmd_args:
                     if i.startswith('-'):
@@ -137,7 +136,7 @@ class Interface:
                             case 'y' | 'yt' | 'youtube':
                                 y = True
                     else:
-                        keyword = i
+                        keyword = keyword + i + ' '
                 if keyword is None:
                     return
                 elif b:
@@ -146,8 +145,17 @@ class Interface:
                     fetch_result = await Search.youtube(keyword)
 
                 for i in fetch_result:
-                    choices.append(i['title'])
+                    choices.append(Choice(i))
 
+                selection = await inquirer.select(message=f'Select one > ', choices=choices, raise_keyboard_interrupt=False,
+                                                  mandatory=False).execute_async()
+                if selection == 'Cancel' or selection is None:
+                    return self.console.print('Selection cancelled.')
+                selection = fetch_result[selection]
+                await self.MUSIC.add_track(vid_id=selection["vidId"], website=selection['platform'])
+
+            case 'sa' | 'song_alias' | 'songalias':
+                pass
             # exit
             case 'exit':
                 sys.exit(0)
@@ -165,7 +173,8 @@ class Interface:
                     self.console.print('Unknown command')
 
     async def entrypoint(self):
-        atexit.register(lambda: self.console.print('Bye~ Have a great day~'))
+        atexit.register(lambda: self.console.print(
+            'Thanks for using kusa! :partying_face: \n:party_popper: Bye~ Have a great day~ :party_popper:'))
         asyncio.get_running_loop()  # checking is there an event loop running
 
         self.console = Console()
@@ -173,9 +182,11 @@ class Interface:
 
         while True:
             try:
-                command = str(await inquirer.text(message="Music >", amark="", style=self._default_color).execute_async())
+                command = str(await inquirer.text(
+                    message="Music >", amark="", style=self._default_color,
+                    raise_keyboard_interrupt=False,
+                    mandatory=True, mandatory_message='If you want to close the music player, type "exit" to do.'
+                ).execute_async())
                 await asyncio.gather(self.dispatch(command.split(" ")))
-            except KeyboardInterrupt:
-                self.console.print('[Console] If you want to close the music player, type "exit" to do.', style='Red')
             except Exception as e:
                 print(f"\n{e}")
