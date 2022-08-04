@@ -1,6 +1,6 @@
 # Kusa
 
-> There have another [Yank Note](https://github.com/purocean/yn) version [README.md](./README_yn.md)
+> Use [Yank Note](https://github.com/purocean/yn) for the **BEST** reading experience
 
 A music player based on vlc-player.
 
@@ -24,23 +24,32 @@ I hope this project can be
 
 ## Building
 
+::::group Administrator permissions required
 
+::: group-item Windows
 ```shell
+# --run--
 powershell
 pip install virtualenv
 virtualenv .venv --python=3.10
 ./.venv/Scripts/activate.ps1
 pip install -r ./requirement.txt
+
 ```
+:::
 
-
-
+::: group-item Linux
 ```shell
+# --run--
 pip install virtualenv
 virtualenv .venv --python=3.10
 source .venv/bin/activate
 pip install -r ./requiremrnt.txt
+
 ```
+:::
+
+::::
 
 
 
