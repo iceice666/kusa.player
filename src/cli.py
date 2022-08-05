@@ -1,13 +1,18 @@
 import asyncio
 import atexit
 import sys
+from typing import Optional
 
 import InquirerPy
+import urllib3
 from InquirerPy import inquirer
 from InquirerPy.base import Choice
 from prompt_toolkit.application import in_terminal
 from rich.console import Console
+from rich.markdown import Markdown
+from rich.style import Style
 
+from CONFIG import help_md
 from src.Music import Player, Search
 
 
@@ -22,8 +27,8 @@ class Interface:
         "answered_question": "",
         "instruction": "#abb2bf",
         "long_instruction": "#abb2bf",
-        "pointer": "#61afef",
-        "checkbox": "#98c379",
+        "pointer": "#8f1eec",
+        "checkbox": "#8fce00",
         "separator": "",
         "skipped": "#5c6370",
         "validator": "",
@@ -44,18 +49,32 @@ class Interface:
             return await self.MUSIC.help_cmd()
 
         match cmd_args.pop(0).lower():
+            case 'help' | 'h':
+                self.console.print(Markdown(help_md, ))
 
             # Music player command
             case 'play' | 'p':
                 if not cmd_args:
-                    return
-                for uri in cmd_args:
-                    if uri == '':
-                        continue
+                    if not self.MUSIC.player.is_playing():
+                        return await self.MUSIC.play()
 
-                    await self.MUSIC.add_track(uri)
-                    self.console.print(
-                        f'[Console] Add Track: Parsing uri {uri}')
+                with self.console.status(f"[light green]Fetching data...(Total {len(cmd_args)})") as status:
+                    for url in cmd_args:
+                        if url == '':
+                            continue
+
+                        parse = urllib3.util.parse_url(url)
+                        if parse.host.lower() == "www.bilibili.com":
+                            await self.MUSIC.add_track(webpage_url=url, website='bilibili')
+                        elif parse.host.lower() in ['www.youtube.com', 'youtu.be']:
+                            await self.MUSIC.add_track(webpage_url=url, website='youtube')
+                        else:
+                            await self.MUSIC.add_track(webpage_url=url)
+
+                    self.console.print('[Console] Added all requested urls')
+
+                if not self.MUSIC.player.is_playing():
+                    return await self.MUSIC.play()
 
             case 'vol' | 'volume':
                 if not cmd_args:
@@ -73,11 +92,32 @@ class Interface:
                         return
 
             case 'nowplaying' | 'np':
-                self.console.print(self.MUSIC.nowplaying)
+                np = self.MUSIC.nowplaying
+                self.console.print('[Console] Nowplaying:')
+                if np["website"].lower() == 'bilibili':
+                    line1 = f'[blue]Bilibili @ {np["author"]}[/blue]'
+                elif np["website"].lower() == 'youtube':
+                    line1 = f'[red]Youtube @ {np["author"]}[/red]'
+                else:
+                    line1 = f'{np["website"]} @ {np["author"]}'
+
+                self.console.print(line1, )
+                self.console.print(np['title'], style=Style(color='#D670B3'))
+                self.console.print(np['webpage_url'], style=Style(color='blue', underline=True))
 
             case 'queue' | 'q':
-                self.console.print("[Console] Queue \n")
-                self.console.print(self.MUSIC.playlist)
+                self.console.print("[Console] Queue")
+                for n, i in enumerate(self.MUSIC.playlist):
+                    if i["website"].lower() == 'bilibili':
+                        line1 = f'[blue]Bilibili @ {i["author"]}[/blue]'
+                    elif i["website"].lower() == 'youtube':
+                        line1 = f'[red]Youtube @ {i["author"]}[/red]'
+                    else:
+                        line1 = f'{i["website"]} @ {i["author"]}'
+
+                    self.console.print(f'{n}. {line1}')
+                    self.console.print(f'{i["title"]}', style=Style(color='#D670B3'))
+                    self.console.print(i['webpage_url'], style=Style(color='blue', underline=True))
 
             case 'skip' | 'sk':
                 await self.MUSIC.skip()
@@ -100,16 +140,16 @@ class Interface:
             case 'loop' | 'l':
                 await self.MUSIC.loop()
                 self.console.print(
-                    '[Console] Now player [red bold]will{}[/red bold] loop the queue.'.format(
-                        " " if self.MUSIC.flag_loop else " not"))
+                    '[Console] Now player [red bold]will {}[/red bold] loop the queue.'.format(
+                        "" if self.MUSIC.flag_loop else "not"))
 
             case 'repeat' | 'r':
                 await self.MUSIC.repeat()
                 self.console.print(
-                    '[Console] Now player [red bold]will{}[/red bold] repeat the song which is playing.'.format(
-                        "" if self.MUSIC.flag_repeat else " not"))
+                    '[Console] Now player [red bold]will {}[/red bold] repeat the song which is playing.'.format(
+                        "" if self.MUSIC.flag_repeat else "not"))
 
-            case  'position' | 'pos':
+            case 'position' | 'pos':
                 if not cmd_args:
                     print(
                         "[Console] Position {}s / {}s ({}%)".format(
@@ -128,33 +168,52 @@ class Interface:
                 choices: list[Choice] = [Choice('Cancel', enabled=True)]
                 fetch_result = {}
 
+                if '-y' in cmd_args or '-yt' in cmd_args or '--youtube' in cmd_args:
+                    y = True
+                elif '-b' in cmd_args or '--bilibili' in cmd_args:
+                    b = True
+
                 for i in cmd_args:
                     if i.startswith('-'):
-                        match i.split('-')[-1].lower():
-                            case 'b' | 'bili' | 'bilibili':
-                                b = True
-                            case 'y' | 'yt' | 'youtube':
-                                y = True
+                        continue
                     else:
-                        keyword = keyword + i + ' '
-                if keyword is None:
-                    return
-                elif b:
+                        keyword += i + ' '
+
+                if b:
                     fetch_result = await Search.bilibili(keyword)
                 elif y:
                     fetch_result = await Search.youtube(keyword)
 
-                for i in fetch_result:
-                    choices.append(Choice(i))
+                for n, info in enumerate(fetch_result):
+                    if info["website"].lower() == 'bilibili':
+                        url = f'https://www.bilibili.com/video/{info["vid_id"]}'
+                    elif info["website"].lower() == 'youtube':
+                        url = f'https://youtu.be/{info["vid_id"]}'
 
-                selection = await inquirer.select(message=f'Select one > ', choices=choices, raise_keyboard_interrupt=False,
-                                                  mandatory=False).execute_async()
-                if selection == 'Cancel' or selection is None:
+                    choices.append(
+                        Choice(name=f'{info["title"]}\n         {url}', value=n))
+
+                selections: Optional[list] = await inquirer.checkbox(message=f'Select one > (Press Space to select and press Enter to enter.)',
+                                                                     choices=choices,
+                                                                     raise_keyboard_interrupt=False,
+                                                                     mandatory=False, ).execute_async()
+
+                if (selections == 'Cancel' and len(selections) == 1) or selections is None:
                     return self.console.print('Selection cancelled.')
-                selection = fetch_result[selection]
-                await self.MUSIC.add_track(vid_id=selection["vidId"], website=selection['platform'])
 
-            case 'sa' | 'song_alias' | 'songalias':
+                with self.console.status(f"[light green]Fetching data...(Total {len(selections)})") as status:
+                    for s in selections:
+                        if s == 'Cancel':
+                            continue
+                        selection = fetch_result[s]
+                        await self.MUSIC.add_track(vid_id=selection["vid_id"], website=selection['website'])
+
+                    self.console.print('[Console] Added all searched results')
+
+                if not self.MUSIC.nowplaying:
+                    await self.MUSIC.play()
+
+            case 'sa' | 'save':
                 pass
             # exit
             case 'exit':
@@ -175,18 +234,21 @@ class Interface:
     async def entrypoint(self):
         atexit.register(lambda: self.console.print(
             'Thanks for using kusa! :partying_face: \n:party_popper: Bye~ Have a great day~ :party_popper:'))
+
         asyncio.get_running_loop()  # checking is there an event loop running
 
         self.console = Console()
-        self.MUSIC = Player()
+        self.MUSIC = Player(rich_console=self.console)
 
         while True:
             try:
-                command = str(await inquirer.text(
-                    message="Music >", amark="", style=self._default_color,
+                command = (str(await inquirer.text(
+                    message="Music >",
+                    amark="", style=self._default_color,
                     raise_keyboard_interrupt=False,
                     mandatory=True, mandatory_message='If you want to close the music player, type "exit" to do.'
-                ).execute_async())
+                ).execute_async()))
                 await asyncio.gather(self.dispatch(command.split(" ")))
+
             except Exception as e:
                 print(f"\n{e}")

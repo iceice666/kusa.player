@@ -4,7 +4,7 @@
 
 `[Optional]?`: It means this argument is optional.
 
-`[Multiple]*`: It means this argument is multiple.
+`[Multiple]*`: It means that this argument can appear multiple times.
 
 ## play | p
 
@@ -46,6 +46,15 @@ Display the current playing song
 
 ## search | s
 
-## sa | song\_alias | songalias
+## save | sa
+
+save songs
+
+* `Alias: sa`
+* `Usage: save [name] [uri]*`
 
 ## exit
+
+Close player.
+
+* `Usage: exit`
