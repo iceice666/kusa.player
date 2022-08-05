@@ -75,17 +75,17 @@ class Interface:
             case 'nowplaying' | 'np':
                 self.console.print(self.MUSIC.nowplaying)
 
-            case 'queue':
+            case 'queue' | 'q':
                 self.console.print("[Console] Queue \n")
                 self.console.print(self.MUSIC.playlist)
 
-            case 'sk' | 'skip':
+            case 'skip' | 'sk':
                 await self.MUSIC.skip()
 
-            case 'clear':
+            case 'clear' | 'c':
                 await self.MUSIC.clear()
 
-            case 'stop':
+            case 'stop' | 'st':
                 await self.MUSIC.clear()
                 await self.MUSIC.skip()
 
@@ -97,19 +97,19 @@ class Interface:
                 self.console.print('[Console] Resumed')
                 await self.MUSIC.resume()
 
-            case 'loop':
+            case 'loop' | 'l':
                 await self.MUSIC.loop()
                 self.console.print(
                     '[Console] Now player [red bold]will{}[/red bold] loop the queue.'.format(
                         " " if self.MUSIC.flag_loop else " not"))
 
-            case 'repeat':
+            case 'repeat' | 'r':
                 await self.MUSIC.repeat()
                 self.console.print(
                     '[Console] Now player [red bold]will{}[/red bold] repeat the song which is playing.'.format(
                         "" if self.MUSIC.flag_repeat else " not"))
 
-            case 'pos' | 'position':
+            case  'position' | 'pos':
                 if not cmd_args:
                     print(
                         "[Console] Position {}s / {}s ({}%)".format(

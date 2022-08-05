@@ -1,26 +1,36 @@
 # Commands
 
-`<Required>`: it mean the argument is required.
+`[Required]`: It means this argument is required.
 
-`[Optional]`: it mean the argument is optional.
+`[Optional]?`: It means this argument is optional.
 
-## play
+`[Multiple]*`: It means this argument is multiple.
+
+## play | p
 
 Play the specified audio stream which is uri provided.
 
-*   `Alias: p`
+* `Alias: p`
 
-*   `Usage: play <uri> <uri> ...`
+* `Usage: play [uri]* ...`
 
 ## volume | vol
 
-Set a scale for volume of player or return volume
+Set the volume of the player or return volume
+
+* `Alias: vol`
+* `Usage: volume [volume]?`
 
 ## nowplaying | np
 
+Display the current playing song
+
+* `Alias: np`
+* `Usage: nowplaying`
+
 ## queue
 
-## sk | skip
+## skip | sk
 
 ## stop
 
@@ -36,6 +46,6 @@ Set a scale for volume of player or return volume
 
 ## search | s
 
-## sa | song\_alias | sonalias
+## sa | song\_alias | songalias
 
 ## exit
