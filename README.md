@@ -6,17 +6,19 @@ A music player based on vlc-player.
 
 ## Features
 
-- Supports lots of streaming platform[^1] and some video platform[^2].
+- Supports lots of streaming platform[^1] and some video platform[^2] .
 - Mouse-actionless, just only press some key on keyboard.
 - Built-in search function, you can search for videos on Youtube or Bilibili without opening the browser.
 
 ## Commands
+
 [HERE](./cmd_help.md)
 
-
 ## THE FINAL GOAL (😅
+
 I hope this project can be
 **VERY BEAUTIFUL , VERY POWERFUL**[^3]
+
 ## TODOs
 
 - [ ] Support Android
@@ -24,6 +26,7 @@ I hope this project can be
 
 ## Building
 
+`For Windows`
 
 ```shell
 powershell
@@ -33,7 +36,7 @@ virtualenv .venv --python=3.10
 pip install -r ./requirement.txt
 ```
 
-
+`For Linux`
 
 ```shell
 pip install virtualenv
@@ -42,9 +45,8 @@ source .venv/bin/activate
 pip install -r ./requiremrnt.txt
 ```
 
-
-
-
 [^1]:https://streamlink.github.io/plugins.html
-[^2]:Basically, I only make sure that [Bilibili](https://www.bilibili.com/) and [Youtube](https://www.youtube.com/) these two websites can work, if the website that [streamlink plugins](https://streamlink.github.io/plugins.html) support, it might work tho.
+
+[^2]:Basically, I only make sure that [Bilibili](https://www.bilibili.com/) and [Youtube](https://www.youtube.com/) these two websites can work, if
+the website that [streamlink plugins](https://streamlink.github.io/plugins.html) support, it might work tho.
 [^3]: https://www.tiktok.com/@spadaniel44/video/6873263608952818950
