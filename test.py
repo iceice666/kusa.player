@@ -6,16 +6,17 @@ si = input().split(" ")
 for i in si:
     i = int(i)
     if 100 >= i >= 0:
-       output.append(i)
-       output.sort()
+        output.append(i)
+        output.sort()
 
          
     if not output:
         print("no data")
     else:
         n = len(output)
+        nn=n//2
         if n % 2 == 1:
-            print(float(output[n//2]))
+            print(float(output[nn]))
         elif n % 2 == 0:
-            nn = n//2
+            
             print(((output[nn]+output[nn-1])/2))
