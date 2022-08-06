@@ -10,7 +10,7 @@
 
 Play the specified audio stream which is uri provided.
 
-* `Alias: p`
+* `Command: play | p`
 
 * `Usage: play [uri]* ...`
 
@@ -18,21 +18,45 @@ Play the specified audio stream which is uri provided.
 
 Set the volume of the player or return volume
 
-* `Alias: vol`
+* `Command: volume | vol`
 * `Usage: volume [volume]?`
 
 ## nowplaying | np
 
 Display the current playing song
 
-* `Alias: np`
+* `Command: nowplaying | np`
 * `Usage: nowplaying`
 
-## queue
+## queue | q
+
+Display songs in the queue.
+
+* `Command: queue | q`
+* `Usage: queue`
+
+## clear
+
+Clear the queue.
+
+* `Command: clear`
+* `Usage: clear`
 
 ## skip | sk
 
+Skip the current playing song.
+
+! This command will make the current song no longer be repeated or looped.
+
+* `Command: skip | sk`
+* `Usage: skip`
+
 ## stop
+
+Easier way to run command `skip` and `clear` simultaneously.
+
+* `Command: stop`
+* `Usage: stop`
 
 ## pause | pa
 
@@ -48,7 +72,7 @@ Display the current playing song
 
 Search keyword that user provided on Youtube/Bilibili
 
-* `Alias: s`
+* `Command: search | s`
 * `Usage: search [keyword]` Search keyword on Youtube (by default).
 * `Usage: search [-y | -yt | --youtube] [keyword]`  Search keyword on Youtube.
 * `Usage: search [-b | --bilibili] [keyword]`  Search keyword on Bilibili.
@@ -57,7 +81,7 @@ Search keyword that user provided on Youtube/Bilibili
 
 save songs
 
-* `Alias: sa`
+* `Command: save | sa`
 * `Usage: save [name] - [uri]*`   Save uris that user provided.(char '-' is required)
 * `Usage: save -c [name]`   For that who want to save current queue.
 

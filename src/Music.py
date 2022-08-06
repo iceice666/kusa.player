@@ -11,7 +11,7 @@ from bilibili_api import parse_link, video
 from prompt_toolkit.application import in_terminal
 from rich.console import Console
 
-from CONFIG import *
+from config.CONFIG import *
 
 if platform.system() == "Windows":
     import os

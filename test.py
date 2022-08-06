@@ -19,5 +19,5 @@ for i in si:
         if n % 2 == 1:
             print(float(output[nn]))
         elif n % 2 == 0:
-            
+
             print(((output[nn]+output[nn-1])/2))
