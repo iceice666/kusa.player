@@ -1,13 +1,21 @@
-import asyncio
-
-from src.Music import Search
-
-s = Search()
 
 
-async def main():
-    print(await s.bilibili('冬之花'))
-    print(await s.youtube('bet on me'))
+output = []
+n = int(input())
+si = input().split(" ")
+for i in si:
+    i = int(i)
+    if 100 >= i >= 0:
+       output.append(i)
+       output.sort()
 
-
-asyncio.run(main())
+         
+    if not output:
+        print("no data")
+    else:
+        n = len(output)
+        if n % 2 == 1:
+            print(float(output[n//2]))
+        elif n % 2 == 0:
+            nn = n//2
+            print(((output[nn]+output[nn-1])/2))

@@ -2,9 +2,9 @@
 
 `[Required]`: It means this argument is required.
 
-`[Optional]?`: It means this argument is optional.
+`[Optional]?`: It means this argument is not required. (optional)
 
-`[Multiple]*`: It means that this argument can appear multiple times.
+`[Multiple]*`: It means that this argument is required and there can be more than one if needed.
 
 ## play | p
 
@@ -46,12 +46,20 @@ Display the current playing song
 
 ## search | s
 
+Search keyword that user provided on Youtube/Bilibili
+
+* `Alias: s`
+* `Usage: search [keyword]` Search keyword on Youtube (by default).
+* `Usage: search [-y | -yt | --youtube] [keyword]`  Search keyword on Youtube.
+* `Usage: search [-b | --bilibili] [keyword]`  Search keyword on Bilibili.
+
 ## save | sa
 
 save songs
 
 * `Alias: sa`
-* `Usage: save [name] [uri]*`
+* `Usage: save [name] - [uri]*`   Save uris that user provided.(char '-' is required)
+* `Usage: save -c [name]`   For that who want to save current queue.
 
 ## exit
 

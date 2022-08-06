@@ -17,6 +17,7 @@ from src.Music import Player, Search
 
 
 class Interface:
+    quickplay_saves={}
     # https://inquirerpy.readthedocs.io/en/latest/pages/style.html
     _default_color = InquirerPy.utils.get_style({
         "questionmark": "#ff4500",
@@ -42,7 +43,8 @@ class Interface:
     })
 
     def __init__(self):
-        pass
+        with open('./quickplay_saves',encoding='utf-8') as f:
+            self.quickplay_saves=json.loads(f.read())
 
     async def dispatch(self, cmd_args):
         if not cmd_args:
@@ -214,7 +216,27 @@ class Interface:
                     await self.MUSIC.play()
 
             case 'sa' | 'save':
-                pass
+                name=""
+                if '-c' in cmd_args:
+                    for i in cmd_args:
+                        if i.startswith('-'):
+                            continue
+                        else:
+                            name += i + ' '
+                    self.save[name]=self.MUSIC.playlist
+                else:
+                    while True:
+                        i=cmd_args.pop(0)
+                        if i=='-':
+                            break
+                        else:
+                            name+=i+' '
+
+                    self.saves[name]=cmd_args
+
+
+
+
             # exit
             case 'exit':
                 sys.exit(0)
@@ -231,9 +253,16 @@ class Interface:
                 async with in_terminal():
                     self.console.print('Unknown command')
 
+
+    def exit(self):
+        with open('./quickplay_saves.json',encoding='utf-8',mode='w') as f:
+            f.write(json.dumps(self.quickplay_saves))
+
+
     async def entrypoint(self):
         atexit.register(lambda: self.console.print(
             'Thanks for using kusa! :partying_face: \n:party_popper: Bye~ Have a great day~ :party_popper:'))
+        atexit.register(self.exit)
 
         asyncio.get_running_loop()  # checking is there an event loop running
 
@@ -252,3 +281,6 @@ class Interface:
 
             except Exception as e:
                 print(f"\n{e}")
+
+
+
