@@ -6,8 +6,9 @@ si = input().split(" ")
 for i in si:
     i = int(i)
     if 100 >= i >= 0:
-        output.append(i)
-        output.sort()
+        for jn,j in enumerate(output):
+            if j > i:
+                output.insert(jn,i)
 
          
     if not output:
