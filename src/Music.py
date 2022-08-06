@@ -10,6 +10,7 @@ import youtube_dl
 from bilibili_api import parse_link, video
 from prompt_toolkit.application import in_terminal
 from rich.console import Console
+from rich.style import Style
 
 from config.CONFIG import *
 
@@ -95,7 +96,6 @@ class Player:
         self.playlist = []
 
     async def add_track(self, webpage_url=None, website=None, vid_id=None, ):
-        url = None
 
         self.playlist += await Search.fetch_info(webpage_url, website, vid_id)
 
@@ -130,8 +130,9 @@ class Player:
             self.player.get_instance().media_new(self.nowplaying['source_url']))
 
         async with in_terminal():
+            self.console.print('[Player] ', end='')
             self.console.print(
-                '[Player] Nowplaying: ', self.nowplaying['title'])
+                'Nowplaying: ', self.nowplaying['title'], style=Style(color='#D670B3'))
 
         self.player.play()
 
@@ -164,10 +165,17 @@ class Search:
     '''
 
     @classmethod
-    async def fetch_info(cls, webpage_url=None, website=None, vid_id=None, **kwargs):
+    async def fetch_info(cls, webpage_url=None, website=None, vid_id=None, ):
 
-        if website is None:
-            return await Search.fetch_url_info(webpage_url)
+        if website is None and webpage_url is not None:
+            parse = urllib3.util.parse_url(webpage_url)
+
+            if parse.host.lower() == "www.bilibili.com":
+                return await Search.fetch_bilibili_url_info(webpage_url)
+            elif parse.host.lower() in ['www.youtube.com', 'youtu.be']:
+                return await Search.fetch_youtube_url_info(webpage_url)
+            else:
+                return await Search.fetch_url_info(webpage_url)
 
         elif website.lower() == 'youtube':
             if vid_id is None:

@@ -5,7 +5,6 @@ import sys
 from typing import Optional
 
 import InquirerPy
-import urllib3
 from InquirerPy import inquirer
 from InquirerPy.base import Choice
 from prompt_toolkit.application import in_terminal
@@ -19,7 +18,7 @@ from src.Music import Player, Search
 
 
 class Interface:
-    quickplay_saves = {}
+    quickplay_save = {}
     # https://inquirerpy.readthedocs.io/en/latest/pages/style.html
     _default_color = InquirerPy.utils.get_style({
         "questionmark": "#ff4500",
@@ -63,17 +62,7 @@ class Interface:
                         if url == '':
                             continue
 
-                        parse = urllib3.util.parse_url(url)
-
-                        try:
-                            if parse.host.lower() == "www.bilibili.com":
-                                await self.MUSIC.add_track(webpage_url=url, website='bilibili')
-                            elif parse.host.lower() in ['www.youtube.com', 'youtu.be']:
-                                await self.MUSIC.add_track(webpage_url=url, website='youtube')
-                            else:
-                                await self.MUSIC.add_track(webpage_url=url)
-                        except BaseException as e:
-                            self.console.print(e)
+                        await self.MUSIC.add_track(url)
 
                     self.console.print('[Console] Added all requested urls')
 
@@ -98,8 +87,10 @@ class Interface:
 
             case 'nowplaying' | 'np':
                 np = self.MUSIC.nowplaying
-                self.console.print('[Console] Nowplaying:')
-                if np["website"].lower() == 'bilibili':
+                self.console.print('[Console] Nowplaying:', end=' ')
+                if not np:
+                    return self.console.print('None', style=Style(color='#D670B3'))
+                elif np["website"].lower() == 'bilibili':
                     line1 = f'[blue]Bilibili @ {np["author"]}[/blue]'
                 elif np["website"].lower() == 'youtube':
                     line1 = f'[red]Youtube @ {np["author"]}[/red]'
@@ -171,7 +162,7 @@ class Interface:
             case 's' | 'search':
                 website = "youtube"
                 keyword = ''
-                choices: list[Choice] = [Choice('Cancel')]
+                choices: list[Choice] = []
                 fetch_result = {}
                 url = ""
 
@@ -200,15 +191,15 @@ class Interface:
                     choices.append(
                         Choice(name=f'{info["title"]}\n         {url}', value=info['vid_id']))
 
-                selections: Optional[list] = await inquirer.checkbox(message=f'Select one > (Press Space to select and press Enter to enter.)',
+                selections: Optional[list] = await inquirer.checkbox(message=f'Press Space to select and press Enter to enter. >',
                                                                      choices=choices,
                                                                      raise_keyboard_interrupt=False,
                                                                      mandatory=False, ).execute_async()
 
-                if (selections == 'Cancel' and len(selections) == 1) or selections is None:
+                if selections is None:
                     return self.console.print('Selection cancelled.')
 
-                with self.console.status(f"[light green]Fetching data...(Total {len(selections)})") as status:
+                with self.console.status(f"[light green]Fetching data...(Total {len(selections)})"):
                     for s in selections:
                         if s == 'Cancel':
                             continue
@@ -235,7 +226,7 @@ class Interface:
                     for i in self.MUSIC.playlist + [self.MUSIC.nowplaying]:
                         _s.append(i['webpage_url'])
 
-                    self.quickplay_saves[name] = _s
+                    self.quickplay_save[name] = _s
 
                 else:
                     while True:
@@ -245,12 +236,49 @@ class Interface:
                         else:
                             name += i + ' '
 
-                    self.quickplay_saves[name] = cmd_args
+                    self.quickplay_save[name] = cmd_args
+
+            case 'quickplay' | 'qp':
+                if not cmd_args:
+                    choices = []
+
+                    for i in self.quickplay_save:
+                        render_text = i
+                        for j in self.quickplay_save[i]:
+                            render_text += f'\n       {j}'
+
+                        choices.append(Choice(name=render_text, value=i))
+
+                    selections: Optional[list] = await inquirer.checkbox(message=f'Press Space to select and press Enter to enter. >',
+                                                                         choices=choices,
+                                                                         raise_keyboard_interrupt=False,
+                                                                         mandatory=False, ).execute_async()
+                    if not selections:
+                        self.console.print('Selection cancelled.')
+                    else:
+                        with self.console.status(f"[light green]Fetching data...(Total {len(cmd_args)})"):
+                            for i in selections:
+                                for j in self.quickplay_save[i]:
+                                    await self.MUSIC.add_track(webpage_url=j)
+
+                            self.console.print(
+                                '[Console] Added all selected quickplay urls')
+
+                        if not self.MUSIC.nowplaying:
+                            await self.MUSIC.play()
+
+                else:
+                    key = cmd_args.pop(0)
+                    playlist = self.quickplay_save.get(key, None)
+                    if playlist is None:
+                        return self.console.print(f'[Console] Quickplay: Unknown keyword {playlist}')
+                    else:
+                        pass
 
             # exit
             case 'exit':
                 with open('./config/quickplay_save.json', encoding='utf-8', mode='w') as f:
-                    f.write(json.dumps(self.quickplay_saves))
+                    f.write(json.dumps(self.quickplay_save))
                 self.console.print(
                     'Thanks for using kusa! :partying_face: \n:party_popper: Bye~ Have a great day~ :party_popper:')
                 sys.exit(0)
@@ -276,7 +304,7 @@ class Interface:
         atexit.register(self.exit)
 
         with open('./config/quickplay_save.json', encoding='utf-8') as f:
-            self.quickplay_saves = json.loads(f.read())
+            self.quickplay_save = json.loads(f.read())
 
         self.console = Console()
         self.MUSIC = Player(rich_console=self.console)
