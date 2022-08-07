@@ -13,8 +13,10 @@ from rich.markdown import Markdown
 from rich.style import Style
 from rich.traceback import install
 
-from config.CONFIG import help_md
-from src.Music import Player, Search
+from config import *
+from src.Music import Player, Fetching, Track
+
+install(show_locals=True)
 
 
 class Interface:
@@ -47,7 +49,7 @@ class Interface:
         if not cmd_args:
             return await self.MUSIC.help_cmd()
 
-        match cmd_args.pop(0).lower():
+        match cmd_args.pop(0):
             case 'help' | 'h':
                 self.console.print(Markdown(help_md, ))
 
@@ -61,17 +63,19 @@ class Interface:
                     for url in cmd_args:
                         if url == '':
                             continue
+                        if 'playlist' in url and YOUTUBE_API is not None:
+                            await Fetching.fetch_youtube_playlist_info(url)
 
-                        await self.MUSIC.add_track(url)
+                        await self.MUSIC.add_track(Track(webpage_url=url))
 
                     self.console.print('[Console] Added all requested urls')
 
-                if not self.MUSIC.player.is_playing():
-                    return await self.MUSIC.play()
+                if self.MUSIC.nowplaying is None:
+                    await self.MUSIC.play()
 
             case 'vol' | 'volume':
-                prev_vol = await self.MUSIC.volume()
-                self.console.print(f"[Console] Volume: {prev_vol} ", end='')
+                vol = await self.MUSIC.volume()
+                self.console.print(f"[Console] Volume: {vol} ", end='')
 
                 if cmd_args:
                     for i in cmd_args:
@@ -90,32 +94,32 @@ class Interface:
                 self.console.print('[Console] Nowplaying:', end=' ')
                 if not np:
                     return self.console.print('None', style=Style(color='#D670B3'))
-                elif np["website"].lower() == 'bilibili':
-                    line1 = f'[blue]Bilibili @ {np["author"]}[/blue]'
-                elif np["website"].lower() == 'youtube':
-                    line1 = f'[red]Youtube @ {np["author"]}[/red]'
+                elif np.website == 'bilibili':
+                    line1 = f'[#00FFFF]Bilibili @ {np.author}[/#00FFFF]'
+                elif np.website == 'youtube':
+                    line1 = f'[red]Youtube @ {np.author}[/red]'
                 else:
-                    line1 = f'{np["website"]} @ {np["author"]}'
+                    line1 = f'{np.website} @ {np.author}'
 
                 self.console.print(line1, )
-                self.console.print(np['title'], style=Style(color='#D670B3'))
-                self.console.print(np['webpage_url'], style=Style(
+                self.console.print(np.title, style=Style(color='#D670B3'))
+                self.console.print(np.webpage_url, style=Style(
                     color='blue', underline=True))
 
             case 'queue' | 'q':
                 self.console.print("[Console] Queue")
                 for n, i in enumerate(self.MUSIC.playlist):
-                    if i["website"].lower() == 'bilibili':
-                        line1 = f'[blue]Bilibili @ {i["author"]}[/blue]'
-                    elif i["website"].lower() == 'youtube':
-                        line1 = f'[red]Youtube @ {i["author"]}[/red]'
+                    if i.website == 'bilibili':
+                        _l = f'[#00FFFF]{i.website} @ {i.author}[/#00FFFF]'
+                    elif i.website == 'youtube':
+                        _l = f'[red]{i.website} @ {i.author}[/red]'
                     else:
-                        line1 = f'{i["website"]} @ {i["author"]}'
+                        _l = f'{i.website} @ {i.author}'
 
-                    self.console.print(f'{n}. {line1}')
+                    self.console.print(f'{n}. {_l}')
                     self.console.print(
-                        f'{i["title"]}', style=Style(color='#D670B3'))
-                    self.console.print(i['webpage_url'], style=Style(
+                        f'{i.title}', style=Style(color='#D670B3'))
+                    self.console.print(i.webpage_url, style=Style(
                         color='blue', underline=True))
 
             case 'skip' | 'sk':
@@ -139,14 +143,14 @@ class Interface:
             case 'loop' | 'l':
                 await self.MUSIC.loop()
                 self.console.print(
-                    '[Console] Now player [red bold]will {}[/red bold] loop the queue.'.format(
-                        "" if self.MUSIC.flag_loop else "not"))
+                    '[Console] Now player [red bold]will{}[/red bold] loop the queue.'.format(
+                        "" if self.MUSIC.flag_loop else " not "))
 
             case 'repeat' | 'r':
                 await self.MUSIC.repeat()
                 self.console.print(
                     '[Console] Now player [red bold]will {}[/red bold] repeat the song which is playing.'.format(
-                        "" if self.MUSIC.flag_repeat else "not"))
+                        "" if self.MUSIC.flag_repeat else " not "))
 
             case 'position' | 'pos':
                 if not cmd_args:
@@ -163,8 +167,7 @@ class Interface:
                 website = "youtube"
                 keyword = ''
                 choices: list[Choice] = []
-                fetch_result = {}
-                url = ""
+                fetch_result: list['Track'] = []
 
                 if '-y' in cmd_args or '-yt' in cmd_args or '--youtube' in cmd_args:
                     website = "youtube"
@@ -178,18 +181,14 @@ class Interface:
                         keyword += i + ' '
 
                 if website == "bilibili":
-                    fetch_result = await Search.bilibili(keyword)
+                    fetch_result = await Fetching.search_bilibili(keyword)
+
                 elif website == "youtube":
-                    fetch_result = await Search.youtube(keyword)
+                    fetch_result = await Fetching.search_youtube(keyword)
 
                 for info in fetch_result:
-                    if website == "bilibili":
-                        url = f'https://www.bilibili.com/video/{info["vid_id"]}'
-                    elif website == "youtube":
-                        url = f'https://youtu.be/{info["vid_id"]}'
-
                     choices.append(
-                        Choice(name=f'{info["title"]}\n         {url}', value=info['vid_id']))
+                        Choice(name=f'{info.title}\n         {info.webpage_url}', value=info))
 
                 selections: Optional[list] = await inquirer.checkbox(message=f'Press Space to select and press Enter to enter. >',
                                                                      choices=choices,
@@ -200,33 +199,40 @@ class Interface:
                     return self.console.print('Selection cancelled.')
 
                 with self.console.status(f"[light green]Fetching data...(Total {len(selections)})"):
-                    for s in selections:
-                        if s == 'Cancel':
+                    for track in selections:
+                        if track == 'Cancel':
                             continue
-                        await self.MUSIC.add_track(vid_id=s, website=website)
+                        track.website = website
+                        await self.MUSIC.add_track(track=track)
 
                     self.console.print('[Console] Added all requested results')
 
-                if not self.MUSIC.nowplaying:
+                if self.MUSIC.nowplaying is None:
                     await self.MUSIC.play()
 
             case 'sa' | 'save':
                 if not cmd_args:
                     return
+
                 name = ""
-                if '-c' in cmd_args:
+                _r = ""
+
+                if '-c' in cmd_args or '-d' in cmd_args:
                     for i in cmd_args:
                         if i.startswith('-'):
-                            continue
+                            _r = i
                         else:
                             name += i + ' '
 
-                    _s = []
+                    if _r == '-c':
+                        _s = []
 
-                    for i in self.MUSIC.playlist + [self.MUSIC.nowplaying]:
-                        _s.append(i['webpage_url'])
+                        for i in self.MUSIC.playlist + [self.MUSIC.nowplaying]:
+                            _s.append(i.webpage_url)
 
-                    self.quickplay_save[name] = _s
+                        self.quickplay_save[name] = _s
+                    elif _r == '-d':
+                        del self.quickplay_save[name]
 
                 else:
                     while True:
@@ -259,12 +265,12 @@ class Interface:
                         with self.console.status(f"[light green]Fetching data...(Total {len(cmd_args)})"):
                             for i in selections:
                                 for j in self.quickplay_save[i]:
-                                    await self.MUSIC.add_track(webpage_url=j)
+                                    await self.MUSIC.add_track(Track(webpage_url=j))
 
                             self.console.print(
                                 '[Console] Added all selected quickplay urls')
 
-                        if not self.MUSIC.nowplaying:
+                        if self.MUSIC.nowplaying is None:
                             await self.MUSIC.play()
 
                 else:
@@ -275,10 +281,13 @@ class Interface:
                     else:
                         pass
 
+                if not self.MUSIC.player.is_playing():
+                    return await self.MUSIC.play()
+
             # exit
             case 'exit':
-                with open('./config/quickplay_save.json', encoding='utf-8', mode='w') as f:
-                    f.write(json.dumps(self.quickplay_save))
+                with open('./config/quickplay_save.json', encoding='utf-8', mode='w') as __f:
+                    __f.write(json.dumps(self.quickplay_save))
                 self.console.print(
                     'Thanks for using kusa! :partying_face: \n:party_popper: Bye~ Have a great day~ :party_popper:')
                 sys.exit(0)
@@ -303,13 +312,11 @@ class Interface:
 
         atexit.register(self.exit)
 
-        with open('./config/quickplay_save.json', encoding='utf-8') as f:
-            self.quickplay_save = json.loads(f.read())
+        with open('./config/quickplay_save.json', encoding='utf-8') as __f:
+            self.quickplay_save = json.loads(__f.read())
 
         self.console = Console()
         self.MUSIC = Player(rich_console=self.console)
-
-        install(console=self.console)
 
         while True:
             try:
@@ -321,5 +328,5 @@ class Interface:
                 ).execute_async()))
                 await asyncio.gather(self.dispatch(command.split(" ")))
 
-            except Exception as e:
-                print(f"\n{e}")
+            except Exception:
+                pass

@@ -1,25 +1,21 @@
 import asyncio
 import json
-import platform
 import time
 from typing import Optional
 
 import streamlink
 import urllib3
+import vlc
 import youtube_dl
 from bilibili_api import parse_link, video
 from prompt_toolkit.application import in_terminal
 from rich.console import Console
 from rich.style import Style
+from rich.traceback import install
 
 from config.CONFIG import *
 
-if platform.system() == "Windows":
-    import os
-
-    os.environ["PYTHON_VLC_MODULE_PATH"] = "./bin/vlc-windows"
-
-import vlc
+install(show_locals=True)
 
 http = urllib3.PoolManager(headers={
     "user-agent": "Mozilla/5.0 (Windows NT 10.0  Win64  x64) AppleWebKit/537.36 (KHTML, like Gecko)"
@@ -30,14 +26,34 @@ def send_get_request(url) -> dict:
     return json.loads((http.request('GET', url)).data.decode('utf-8'))
 
 
+class Track:
+
+    def __init__(self, *,
+                 website: str = None,
+                 source_url: str = None,
+                 webpage_url: str = None,
+                 title: str = None,
+                 author: str = None,
+                 expired_time: int = None,
+                 video_id: str = None
+                 ):
+        self.website = website
+        self.source_url = source_url
+        self.webpage_url = webpage_url
+        self.title = title
+        self.author = author
+        self.expired_time = expired_time
+        self.video_id = video_id
+
+
 class Player:
     flag_repeat: bool = False
     flag_loop: bool = False
     flag_skip: bool = False
     _finish_signal_passed: bool = False
 
-    playlist: list[dict[str:any]] = []
-    nowplaying: dict = {}
+    playlist: list[Track] = []
+    nowplaying: Optional[Track] = None
 
     def __init__(self, args: tuple = ("--no-ts-trust-pcr", "--ts-seek-percent", "--no-video", "-q"), rich_console=Console()):
         self.console = rich_console
@@ -95,44 +111,36 @@ class Player:
     async def clear(self):
         self.playlist = []
 
-    async def add_track(self, webpage_url=None, website=None, vid_id=None, ):
+    async def add_track(self, track):
 
-        self.playlist += await Search.fetch_info(webpage_url, website, vid_id)
+        fetched_info = await Fetching.fetch_info(track)
 
-        if vid_id is not None:
-            if vid_id.startswith('BV'):
-                url = f'https://www.bilibili.com/video/{vid_id}'
-            else:
-                url = f'https://youtu.be/{vid_id}'
-        else:
-            url = webpage_url
+        self.playlist += fetched_info
 
-        self.console.print(f'[Player] Added Track: {url}')
+        for i in fetched_info:
+            self.console.print(f'[Player] Added Track: {i.webpage_url}')
 
-        if not self.player.is_playing() and not self.nowplaying and len(self.playlist) > 1:
+        if not self.player.is_playing() and self.nowplaying is None and len(self.playlist) > 1:
             await self.play()
 
     async def play(self):
         if not self.playlist:
             return
         self.nowplaying = self.playlist.pop(0)
-        if time.time() > self.nowplaying['expired_time']:
+        if time.time() > self.nowplaying.expired_time:
             self.console.print(
                 '[Player] [yellow]This link expired, re-fetching...[/yellow]')
-            self.nowplaying['url'] = (await Search.fetch_info(
-                webpage_url=self.nowplaying['website_url'],
-                website=self.nowplaying['website'])
-                                      )[0]['source_url']
+            self.nowplaying.source_url = (await Fetching.fetch_info(self.nowplaying))[0].source_url
 
-            self.nowplaying['expired_time'] = time.time() + 3600
+            self.nowplaying.expired_time = time.time() + 3600
 
         self.player.set_media(
-            self.player.get_instance().media_new(self.nowplaying['source_url']))
+            self.player.get_instance().media_new(self.nowplaying.source_url))
 
         async with in_terminal():
             self.console.print('[Player] ', end='')
             self.console.print(
-                'Nowplaying: ', self.nowplaying['title'], style=Style(color='#D670B3'))
+                'Nowplaying: ', self.nowplaying.title, style=Style(color='#D670B3'))
 
         self.player.play()
 
@@ -142,60 +150,63 @@ class Player:
         elif self.flag_loop and not self.flag_skip:
             self.playlist.append(self.nowplaying)
 
-        self.nowplaying = {}
+        self.nowplaying = None
 
         await self.play()
 
 
-class Search:
+class Fetching:
     def __init__(self):
         pass
 
-    '''
-    tracks format
-    {
-        'website':'',
-        'webpage_url':'',
-        'source_url':'',
-        'title':'',
-        'author':'',
-        'expired_time':''
-    }
-
-    '''
-
     @classmethod
-    async def fetch_info(cls, webpage_url=None, website=None, vid_id=None, ):
+    async def fetch_info(cls, track):
 
-        if website is None and webpage_url is not None:
-            parse = urllib3.util.parse_url(webpage_url)
+        if track.website:
+            if track.website == 'youtube':
+                func = cls.fetch_youtube_url_info
+            elif track.website == 'bilibili':
+                func = cls.fetch_bilibili_url_info
+            else:
+                func = cls.fetch_url_info
+
+            if track.video_id:
+                arguments = {"video_id": track.video_id}
+            else:
+                arguments = {"webpage_url": track.webpage_url}
+
+        elif track.webpage_url:
+            parse = urllib3.util.parse_url(track.webpage_url)
 
             if parse.host.lower() == "www.bilibili.com":
-                return await Search.fetch_bilibili_url_info(webpage_url)
+                func = cls.fetch_bilibili_url_info
             elif parse.host.lower() in ['www.youtube.com', 'youtu.be']:
-                return await Search.fetch_youtube_url_info(webpage_url)
+                func = cls.fetch_youtube_url_info
             else:
-                return await Search.fetch_url_info(webpage_url)
+                func = cls.fetch_url_info
 
-        elif website.lower() == 'youtube':
-            if vid_id is None:
-                return await Search.fetch_youtube_url_info(webpage_url)
-            elif vid_id is not None:
-                return await Search.fetch_youtube_url_info(f'https://youtu.be/{vid_id}')
+            arguments = {"webpage_url": track.webpage_url}
 
-        elif website.lower() == 'bilibili':
-            if vid_id is None:
-                return await Search.fetch_bilibili_url_info(webpage_url)
-            elif vid_id is not None:
-                return await Search.fetch_bilibili_url_info(bvid=vid_id)
+        else:
+            func = cls.fetch_url_info
+            arguments = {"webpage_url": track.webpage_url}
 
-    @staticmethod
-    async def fetch_url_info(url):
-        return (streamlink.streams(url))['best'].url
+        result = await func(**arguments)
+        for i in result:
+            i.expired_time = int(time.time()) + 3600
+
+        return result
 
     @staticmethod
-    async def fetch_youtube_url_info(webpage_url):
-        _return = []
+    async def fetch_url_info(webpage_url):
+        return Track(source_url=(streamlink.streams(webpage_url))['best'].url)
+
+    @staticmethod
+    async def fetch_youtube_url_info(webpage_url=None, video_id=None):
+        result = []
+        if video_id:
+            webpage_url = f'https://youtu.be/{video_id}'
+
         with youtube_dl.YoutubeDL({"quiet": True}) as ydl:
             source_info: dict = ydl.extract_info(
                 webpage_url, download=False)
@@ -211,34 +222,39 @@ class Search:
             except KeyError:
                 source_url = i["formats"][0]["url"]
 
-            _return.append({'website': 'youtube',
-                            'source_url': source_url,
-                            'webpage_url': i['webpage_url'],
-                            'title': i['title'],
-                            'author': i['uploader'],
-                            'expired_time': int(time.time()) + 3600})
-        return _return
+            result.append(Track(website='youtube',
+                                source_url=source_url,
+                                webpage_url=i['webpage_url'],
+                                title=i['title'],
+                                author=i['uploader'],
+                                ))
+        return result
+
+    # YouTube API Key required
+    @staticmethod
+    async def fetch_youtube_playlist_info(webpage_url):
+        api = f'https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails,status' \
+              f'&playlistId={webpage_url}&key={YOUTUBE_API}&maxResults=50'
 
     @staticmethod
-    async def fetch_bilibili_url_info(webpage_url=None, bvid=None):
+    async def fetch_bilibili_url_info(webpage_url=None, video_id=None):
         v: video.Video
 
-        if bvid is not None:
-            v = video.Video(bvid)
+        if video_id:
+            v = video.Video(video_id)
         else:
             v = (await parse_link(webpage_url))[0]
 
         source_info = await v.get_info()
 
-        return [{'website': 'bilibili',
-                 'source_url': (await v.get_download_url(0, html5=True))["durl"][0]['url'],
-                 'webpage_url': webpage_url,
-                 'title': source_info['title'],
-                 'author': source_info['owner']['name'],
-                 'expired_time': int(time.time()) + 3600}]
+        return [Track(website='bilibili',
+                      source_url=(await v.get_download_url(0, html5=True))["durl"][0]['url'],
+                      webpage_url=webpage_url,
+                      title=source_info['title'],
+                      author=source_info['owner']['name'])]
 
     @staticmethod
-    async def youtube(searching):
+    async def search_youtube(searching):
         searched_list = send_get_request(
             f"https://www.googleapis.com/youtube/v3/search?part=snippet&"
             f"q={searching.replace(' ', '+')}&key={YOUTUBE_API}&maxResults=20&"
@@ -247,23 +263,22 @@ class Search:
 
         searched_result = []
         for i in searched_list:
-            searched_result.append({
-                'title': i['snippet']['title'],
-                'website': 'youtube',
-                'vid_id': i['id']['videoId']})
+            searched_result.append(Track(
+                title=i['snippet']['title'],
+                website='youtube',
+                video_id=i['id']['videoId']))
 
         return searched_result
 
     @staticmethod
-    async def bilibili(searching):
+    async def search_bilibili(searching):
         searched_list = send_get_request(
             f'https://api.bilibili.com/x/web-interface/search/all/v2?keyword={searching}')['data']['result'][-1]['data']
         searched_result = []
         for i in searched_list:
-            searched_result.append({
-                'title': str(i['title']).replace(
-                    '<em class="keyword">', '').replace('</em>', ''),
-                'website': 'bilibili',
-                'vid_id': i['bvid']
-            })
-        return searched_result
+            searched_result.append(
+                Track(title=str(i['title']).replace('<em class="keyword">', '').replace('</em>', ''),
+                      website='bilibili',
+                      video_id=i['bvid'])
+            )
+            return searched_result
