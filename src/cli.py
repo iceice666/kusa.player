@@ -67,8 +67,10 @@ class Interface:
                     for url in cmd_args:
                         if url == '':
                             continue
+
                         if 'youtube'in url and'playlist' in url and YOUTUBE_API is not None:
-                            await Fetching.fetch_youtube_playlist_info(url)
+                            for t in await Fetching.fetch_youtube_playlist_info(url):
+                                await self.MUSIC.add_track(t)
 
                         await self.MUSIC.add_track(Track(webpage_url=url))
 

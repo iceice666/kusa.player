@@ -1,5 +1,6 @@
 import asyncio
 import json
+from pydoc import plain
 import time
 from typing import Optional
 
@@ -231,10 +232,18 @@ class Fetching:
         return result
 
     # YouTube API Key required
+    # Youtube Api playlist api only returns 50 videos per GET request sent.
     @staticmethod
-    async def fetch_youtube_playlist_info(webpage_url):
+    async def fetch_youtube_playlist_info(webpage_url) -> list[Track]:
         api = f'https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails,status' \
               f'&playlistId={webpage_url}&key={YOUTUBE_API}&maxResults=50'
+
+        playlist=send_get_request(api)['items']
+        _pl=[]
+        for i in playlist:
+            _pl.append(Track(website='youtube',video_id=i['contentDetails']['videoId']))
+
+        return [Track(website='youtube', video_id=i['contentDetails']['videoId']) for i in playlist]
 
     @staticmethod
     async def fetch_bilibili_url_info(webpage_url=None, video_id=None):
@@ -261,24 +270,17 @@ class Fetching:
             "type=video"
         )['items']
 
-        searched_result = []
-        for i in searched_list:
-            searched_result.append(Track(
+
+        return [Track(
                 title=i['snippet']['title'],
                 website='youtube',
-                video_id=i['id']['videoId']))
-
-        return searched_result
+                video_id=i['id']['videoId']) for i in searched_list]
 
     @staticmethod
     async def search_bilibili(searching):
         searched_list = send_get_request(
             f'https://api.bilibili.com/x/web-interface/search/all/v2?keyword={searching}')['data']['result'][-1]['data']
-        searched_result = []
-        for i in searched_list:
-            searched_result.append(
-                Track(title=str(i['title']).replace('<em class="keyword">', '').replace('</em>', ''),
+
+        return [Track(title=str(i['title']).replace('<em class="keyword">', '').replace('</em>', ''),
                       website='bilibili',
-                      video_id=i['bvid'])
-            )
-            return searched_result
+                      video_id=i['bvid']) for i in searched_list]
