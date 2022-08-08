@@ -1,7 +1,7 @@
 import asyncio
 import atexit
 import json
-import sys
+from logging import exception
 from typing import Optional
 
 import InquirerPy
@@ -17,6 +17,10 @@ from config import *
 from src.Music import Player, Fetching, Track
 
 install(show_locals=True)
+
+
+class Exit(Exception):
+    pass
 
 
 class Interface:
@@ -290,7 +294,7 @@ class Interface:
                     __f.write(json.dumps(self.quickplay_save))
                 self.console.print(
                     'Thanks for using kusa! :partying_face: \n:party_popper: Bye~ Have a great day~ :party_popper:')
-                sys.exit(0)
+                raise Exit()
 
             # for debug commands
             case '_exec':
@@ -328,5 +332,8 @@ class Interface:
                 ).execute_async()))
                 await asyncio.gather(self.dispatch(command.split(" ")))
 
-            except Exception:
+            except Exit:
+                break
+
+            except:
                 pass
