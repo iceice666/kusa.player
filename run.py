@@ -1,10 +1,13 @@
+
 import asyncio
 
-from src.cli import Interface
+
+async def main():
+    from src.main import Interface
+    await Interface().entrypoint()
+
 
 try:
-    asyncio.run(Interface().entrypoint())
+    asyncio.run(main())
 except:
     pass
-
-
