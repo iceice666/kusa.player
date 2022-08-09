@@ -6,7 +6,6 @@ from typing import Optional
 
 import streamlink
 import urllib3
-import vlc
 import youtube_dl
 from bilibili_api import parse_link, video
 from prompt_toolkit.application import in_terminal
@@ -15,6 +14,7 @@ from rich.style import Style
 from rich.traceback import install
 
 from config.CONFIG import *
+from src.core import VLC
 
 install(show_locals=True)
 
@@ -56,19 +56,16 @@ class Player:
     playlist: list[Track] = []
     nowplaying: Optional[Track] = None
 
-    def __init__(self, args: tuple = ("--no-ts-trust-pcr", "--ts-seek-percent", "--no-video", "-q"), rich_console=Console()):
+    def __init__(self,  rich_console=Console()):
         self.console = rich_console
         self._rl = asyncio.get_running_loop()
 
-        self.player: vlc.MediaPlayer = vlc.Instance(args).media_player_new()
-        self.player.audio_set_volume(20)
+        _v=VLC()
+        _v._playing_end=self._playing_end
 
-        self.player.event_manager().event_attach(vlc.EventType.MediaPlayerStopped,
-                                                 lambda *_: asyncio.run_coroutine_threadsafe(self._playing_end(),
-                                                                                             self._rl))
+        self.player=_v.player
 
-    def event_attach(self, event, callback: callable, *args, **kwargs):
-        self.player.event_manager().event_attach(event, callback, args, kwargs)
+
 
     async def execute(self, cmd_args):
         for c in cmd_args:
@@ -81,17 +78,10 @@ class Player:
         return self.playlist
 
     async def volume(self, vol: Optional[int] = None):
-        if vol is None:
-            pass
-        else:
-            self.player.audio_set_volume(vol)
-        return self.player.audio_get_volume()
+        await self.player.volume(vol)
 
     async def position(self, pos: int | float):
-        if 1 > pos >= 0:
-            self.player.set_position(pos)
-        elif 1 <= pos < self.player.get_length():
-            self.player.set_position(pos / self.player.get_length())
+        await self.player.position(pos)
 
     async def repeat(self):
         self.flag_repeat = not self.flag_repeat
@@ -100,14 +90,13 @@ class Player:
         self.flag_loop = not self.flag_loop
 
     async def skip(self):
-        self.flag_skip = True
         self.player.stop()
 
     async def pause(self):
-        self.player.set_pause(1)
+        self.player.pause()
 
     async def resume(self):
-        self.player.set_pause(0)
+        self.player.resume()
 
     async def clear(self):
         self.playlist = []
@@ -116,12 +105,14 @@ class Player:
 
         fetched_info = await Fetching.fetch_info(track)
 
+
+
         self.playlist += fetched_info
 
         for i in fetched_info:
             self.console.print(f'[Player] Added Track: {i.webpage_url}')
 
-        if not self.player.is_playing() and self.nowplaying is None and len(self.playlist) > 1:
+        if not self.player.is_playing and self.nowplaying is None and len(self.playlist) > 1:
             await self.play()
 
     async def play(self):
@@ -135,8 +126,7 @@ class Player:
 
             self.nowplaying.expired_time = time.time() + 3600
 
-        self.player.set_media(
-            self.player.get_instance().media_new(self.nowplaying.source_url))
+        self.player.set_uri(self.nowplaying.source_url)
 
         async with in_terminal():
             self.console.print('[Player] ', end='')
@@ -239,9 +229,6 @@ class Fetching:
               f'&playlistId={webpage_url}&key={YOUTUBE_API}&maxResults=50'
 
         playlist=send_get_request(api)['items']
-        _pl=[]
-        for i in playlist:
-            _pl.append(Track(website='youtube',video_id=i['contentDetails']['videoId']))
 
         return [Track(website='youtube', video_id=i['contentDetails']['videoId']) for i in playlist]
 
