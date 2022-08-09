@@ -1,6 +1,5 @@
 import asyncio
 import json
-from pydoc import plain
 import time
 from typing import Optional
 
@@ -13,8 +12,8 @@ from rich.console import Console
 from rich.style import Style
 from rich.traceback import install
 
-from config.CONFIG import *
-from src.core import VLC
+from config import *
+from src.vlc_core import VLC
 
 install(show_locals=True)
 
@@ -56,16 +55,14 @@ class Player:
     playlist: list[Track] = []
     nowplaying: Optional[Track] = None
 
-    def __init__(self,  rich_console=Console()):
+    def __init__(self, rich_console=Console()):
         self.console = rich_console
         self._rl = asyncio.get_running_loop()
 
-        _v=VLC()
-        _v._playing_end=self._playing_end
+        _v = VLC()
+        _v._playing_end = self._playing_end
 
-        self.player=_v.player
-
-
+        self.player = _v
 
     async def execute(self, cmd_args):
         for c in cmd_args:
@@ -104,8 +101,6 @@ class Player:
     async def add_track(self, track):
 
         fetched_info = await Fetching.fetch_info(track)
-
-
 
         self.playlist += fetched_info
 
@@ -226,9 +221,9 @@ class Fetching:
     @staticmethod
     async def fetch_youtube_playlist_info(webpage_url) -> list[Track]:
         api = f'https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails,status' \
-              f'&playlistId={webpage_url}&key={YOUTUBE_API}&maxResults=50'
+              f'&playlistId={webpage_url}&key={config.YOUTUBE_API}&maxResults=50'
 
-        playlist=send_get_request(api)['items']
+        playlist = send_get_request(api)['items']
 
         return [Track(website='youtube', video_id=i['contentDetails']['videoId']) for i in playlist]
 
@@ -253,15 +248,14 @@ class Fetching:
     async def search_youtube(searching):
         searched_list = send_get_request(
             f"https://www.googleapis.com/youtube/v3/search?part=snippet&"
-            f"q={searching.replace(' ', '+')}&key={YOUTUBE_API}&maxResults=20&"
+            f"q={searching.replace(' ', '+')}&key={config.YOUTUBE_API}&maxResults=20&"
             "type=video"
         )['items']
 
-
         return [Track(
-                title=i['snippet']['title'],
-                website='youtube',
-                video_id=i['id']['videoId']) for i in searched_list]
+            title=i['snippet']['title'],
+            website='youtube',
+            video_id=i['id']['videoId']) for i in searched_list]
 
     @staticmethod
     async def search_bilibili(searching):

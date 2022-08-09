@@ -1,7 +1,6 @@
 import asyncio
 import atexit
 import json
-from logging import exception
 from typing import Optional
 
 import InquirerPy
@@ -25,6 +24,7 @@ class Exit(Exception):
 
 class Interface:
     quickplay_save = {}
+    YOUTUBE_API = config.get('YOUTUBE_API', None)
     # https://inquirerpy.readthedocs.io/en/latest/pages/style.html
     _default_color = InquirerPy.utils.get_style({
         "questionmark": "#ff4500",
@@ -68,7 +68,7 @@ class Interface:
                         if url == '':
                             continue
 
-                        if 'youtube'in url and'playlist' in url and YOUTUBE_API is not None:
+                        if 'youtube' in url and 'playlist' in url and self.YOUTUBE_API is not None:
                             for t in await Fetching.fetch_youtube_playlist_info(url):
                                 await self.MUSIC.add_track(t)
 

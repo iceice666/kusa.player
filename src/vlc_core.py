@@ -1,14 +1,14 @@
-
 # vlc-player functions here
-from typing import Optional
-import vlc
 import asyncio
+from typing import Optional
+
+import vlc
+
 
 class VLC:
-    def __init__(self, args: tuple = ("--no-ts-trust-pcr", "--ts-seek-percent", "--no-video", "-q"),):
+    def __init__(self, args: tuple = ("--no-ts-trust-pcr", "--ts-seek-percent", "--no-video", "-q"), ):
 
         self._rl = asyncio.get_running_loop()
-
 
         self.player: vlc.MediaPlayer = vlc.Instance(args).media_player_new()
         self.player.audio_set_volume(20)
@@ -17,8 +17,9 @@ class VLC:
                                                  lambda *_: asyncio.run_coroutine_threadsafe(self._playing_end(),
                                                                                              self._rl))
 
+    async def _playing_end(self):
+        pass
 
-    async def _playing_end(self):pass
     '''Should be a coroutine method'''
 
     async def volume(self, vol: Optional[int] = None):
@@ -43,14 +44,16 @@ class VLC:
     def resume(self):
         self.player.set_pause(0)
 
-    def set_uri(self,uri):
+    def set_uri(self, uri):
         self.player.set_media(
             self.player.get_instance().media_new(uri))
 
     def play(self):
         self.player.play()
 
-
     @property
     def is_playing(self):
         return self.player.is_playing()
+
+    def stop(self):
+        self.player.stop()
