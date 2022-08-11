@@ -1,113 +1,13 @@
-import asyncio
 from typing import Optional
 
-import InquirerPy
 from InquirerPy import inquirer
 from InquirerPy.base import Choice
 from prompt_toolkit.application import in_terminal
-from rich.console import Console
 from rich.markdown import Markdown
 from rich.style import Style
-from rich.traceback import install
 
-from src.cli.core import *
-from src.core.vlc_core import VLC
-
-install(show_locals=True)
-
-console = Console()
-
-
-class Player:
-    flag_repeat: bool = False
-    flag_loop: bool = False
-    flag_skip: bool = False
-    _finish_signal_passed: bool = False
-
-    queue: list[Track] = []
-    nowplaying: Optional[Track] = None
-
-    def __init__(self):
-        self._rl = asyncio.get_running_loop()
-
-        _v = VLC()
-        _v._playing_end = self._playing_end
-
-        self.player = _v
-
-    def execute(self, cmd_args):
-        for c in cmd_args:
-            exec(c.replace("$", "self."))
-
-    def volume(self, vol: Optional[int] = None):
-        return self.player.volume(vol)
-
-    def position(self, pos: int | float):
-        self.player.position(pos)
-
-    def repeat(self):
-        self.flag_repeat = not self.flag_repeat
-
-    def loop(self):
-        self.flag_loop = not self.flag_loop
-
-    def skip(self):
-        self.player.stop()
-
-    def pause(self):
-        self.player.pause()
-
-    def resume(self):
-        self.player.resume()
-
-    def clear(self):
-        self.queue = []
-
-    async def add_track(self, track):
-
-        fetched_info = await Fetch.fetch_info(track)
-
-        self.queue += fetched_info
-
-        for i in fetched_info:
-            console.print(f'[Player] Added Track: {i.webpage_url}')
-
-        if not self.is_playing and self.nowplaying is None and len(self.queue) > 1:
-            await self.play()
-
-    async def play(self):
-        if not self.queue:
-            return
-        self.nowplaying = self.queue.pop(0)
-        if time.time() > self.nowplaying.expired_time:
-            console.print(
-                '[Player] [yellow]This link expired, re-fetching...[/yellow]')
-            self.nowplaying.source_url = (await Fetch.fetch_info(self.nowplaying))[0].source_url
-
-            self.nowplaying.expired_time = time.time() + 3600
-
-        self.player.set_uri(self.nowplaying.source_url)
-
-        async with in_terminal():
-            console.print('[Player] ', end='')
-            console.print(
-                'Nowplaying: ', self.nowplaying.title, style=Style(color='#D670B3'))
-
-        self.player.play()
-
-    async def _playing_end(self):
-        if self.flag_repeat and not self.flag_skip:
-            self.queue.insert(0, self.nowplaying)
-        elif self.flag_loop and not self.flag_skip:
-            self.queue.append(self.nowplaying)
-
-        self.nowplaying = None
-
-        await self.play()
-
-    @property
-    def is_playing(self):
-        return self.player.is_playing()
+from src.CLI.music import Player
+from src.CLI.core import *
 
 
 class Commands:
@@ -121,7 +21,7 @@ class Commands:
         async with in_terminal():
             console.print('Unknown command')
 
-    def exit_(self):
+    def cmd_exit(self):
         with open('./config/quickplay_save.json', encoding='utf-8', mode='w') as __f:
             __f.write(json.dumps(self.quickplay_save))
         console.print(
@@ -142,7 +42,7 @@ class Commands:
                     continue
 
                 if 'youtube' in url and 'playlist' in url and self.YOUTUBE_API is not None:
-                    for t in await Fetch.fetch_youtube_playlist_info(url):
+                    for t in await NetworkIO.fetch_youtube_playlist_info(url):
                         await self.MUSIC.add_track(t)
 
                 await self.MUSIC.add_track(Track(webpage_url=url))
@@ -260,10 +160,10 @@ class Commands:
                 keyword += i + ' '
 
         if website == "bilibili":
-            fetch_result = await Fetch.search_bilibili(keyword)
+            fetch_result = await NetworkIO.search_bilibili(keyword)
 
         elif website == "youtube":
-            fetch_result = await Fetch.search_youtube(keyword)
+            fetch_result = await NetworkIO.search_youtube(keyword)
 
         for info in fetch_result:
             choices.append(
@@ -341,7 +241,7 @@ class Commands:
             if not selections:
                 console.print('Selection cancelled.')
             else:
-                with console.status(f"[light green]Fetching data...(Total {len(cmd_args)})"):
+                with console.status(f"[light green]Fetching data...(Total {len(selections)})"):
                     for i in selections:
                         for j in self.quickplay_save[i]:
                             await self.MUSIC.add_track(Track(webpage_url=j))
@@ -362,34 +262,3 @@ class Commands:
 
         if not self.MUSIC.player.is_playing():
             return await self.MUSIC.play()
-
-    _default_color = InquirerPy.utils.get_style({
-        "questionmark": "#ff4500",
-        "answermark": "",
-        "answer": "#267cd8",
-        "input": "#006400",
-        "question": "",
-        "answered_question": "",
-        "instruction": "#abb2bf",
-        "long_instruction": "#abb2bf",
-        "pointer": "#8f1eec",
-        "checkbox": "#8fce00",
-        "separator": "",
-        "skipped": "#5c6370",
-        "validator": "",
-        "marker": "#e5c07b",
-        "fuzzy_prompt": "#c678dd",
-        "fuzzy_info": "#abb2bf",
-        "fuzzy_border": "#4b5263",
-        "fuzzy_match": "#c678dd",
-        "spinner_pattern": "#e5c07b",
-        "spinner_text": ""
-    })
-
-    async def ask(self, ):
-        return (str(await inquirer.text(
-            message="Music >",
-            amark="", style=self._default_color,
-            raise_keyboard_interrupt=False,
-            mandatory=True, mandatory_message='If you want to close the music player, type "exit" to do.'
-        ).execute_async()))

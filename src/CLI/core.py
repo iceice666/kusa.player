@@ -5,9 +5,11 @@ import streamlink
 import urllib3
 import youtube_dl
 from bilibili_api import parse_link, video
+from rich.console import Console
 
 from config import *
 
+console = Console()
 http = urllib3.PoolManager(headers={
     "user-agent": "Mozilla/5.0 (Windows NT 10.0  Win64  x64) AppleWebKit/537.36 (KHTML, like Gecko)"
                   "Chrome/103.0.5060.114 Safari/537.36 Edg/103.0.1264.62"})
@@ -37,7 +39,7 @@ class Track:
         self.video_id = video_id
 
 
-class Fetch:
+class NetworkIO:
     def __init__(self):
         pass
 
