@@ -1,4 +1,5 @@
 import json
+import logging
 import time
 
 import streamlink
@@ -13,6 +14,9 @@ console = Console()
 http = urllib3.PoolManager(headers={
     "user-agent": "Mozilla/5.0 (Windows NT 10.0  Win64  x64) AppleWebKit/537.36 (KHTML, like Gecko)"
                   "Chrome/103.0.5060.114 Safari/537.36 Edg/103.0.1264.62"})
+
+ytdl_logger = logging.getLogger("ytdl-ignore")
+ytdl_logger.disabled = True
 
 
 def send_get_request(url) -> dict:
@@ -76,6 +80,10 @@ class NetworkIO:
             arguments = {"webpage_url": track.webpage_url}
 
         result = await func(**arguments)
+
+        if result is None:
+            return
+
         for i in result:
             i.expired_time = int(time.time()) + 3600
 
@@ -83,7 +91,10 @@ class NetworkIO:
 
     @staticmethod
     async def fetch_url_info(webpage_url):
-        return Track(source_url=(streamlink.streams(webpage_url))['best'].url)
+        source_url = streamlink.streams(webpage_url).get('best', None)
+        if source_url is None:
+            return None
+        return Track(source_url=source_url.url)
 
     @staticmethod
     async def fetch_youtube_url_info(webpage_url=None, video_id=None):
@@ -91,20 +102,28 @@ class NetworkIO:
         if video_id:
             webpage_url = f'https://youtu.be/{video_id}'
 
-        with youtube_dl.YoutubeDL({"quiet": True}) as ydl:
+        with youtube_dl.YoutubeDL({"quiet": True, "no_warnings": True, "ignoreerrors": True, "logger": ytdl_logger, }) as ydl:
+
             source_info: dict = ydl.extract_info(
                 webpage_url, download=False)
 
-        if source_info.get('_type', None) == 'playlist':
+        if source_info is None:
+            console.print(
+                f'[Player] [red]Unavailable video: {webpage_url}[/red]')
+            return
+        elif source_info.get('_type', None) == 'playlist':
             playlist = source_info['entries']
         else:
             playlist = [source_info]
 
+        if playlist is None:
+            return
+
         for i in playlist:
             try:
-                source_url = i["formats"][0]["fragment_base_url"]
-            except KeyError:
                 source_url = i["formats"][0]["url"]
+            except KeyError:
+                source_url = i["formats"][0]["fragment_base_url"]
 
             result.append(Track(website='youtube',
                                 source_url=source_url,
@@ -118,8 +137,10 @@ class NetworkIO:
     # Youtube Api playlist api only returns 50 videos per GET request sent.
     @staticmethod
     async def fetch_youtube_playlist_info(webpage_url) -> list[Track]:
+        playlist_id = urllib3.util.parse_url(
+            webpage_url).request_uri.split('=')[-1]
         api = f'https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails,status' \
-              f'&playlistId={webpage_url}&key={config.YOUTUBE_API}&maxResults=50'
+              f'&playlistId={playlist_id}&key={config.YOUTUBE_API}&maxResults=50'
 
         playlist = send_get_request(api)['items']
 

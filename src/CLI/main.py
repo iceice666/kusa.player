@@ -71,11 +71,10 @@ class Interface:
                 await self.commands.cmd_quickplay(cmd_args)
 
             case 'exit':
+                self.commands.cmd_stop()
                 self.commands.cmd_exit()
                 raise Exit
 
-            case 't':
-                1 / 0
             case '':
                 pass
 
@@ -122,4 +121,4 @@ class Interface:
                 break
 
             except BaseException as e:
-                console.print_exception()
+                console.print_exception(show_locals=True)

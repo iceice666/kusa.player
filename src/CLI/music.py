@@ -57,8 +57,9 @@ class Player:
         self.queue = []
 
     async def add_track(self, track):
-
         fetched_info = await NetworkIO.fetch_info(track)
+
+        if fetched_info is None: return
 
         self.queue += fetched_info
 
@@ -82,9 +83,8 @@ class Player:
         self.player.set_uri(self.nowplaying.source_url)
 
         async with in_terminal():
-            console.print('[Player] ', end='')
             console.print(
-                'Nowplaying: ', self.nowplaying.title, style=Style(color='#D670B3'))
+                f'[Player] [#D670B3]Nowplaying: {self.nowplaying.title}', )
 
         self.player.play()
 

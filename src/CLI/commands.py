@@ -1,3 +1,4 @@
+import asyncio
 from typing import Optional
 
 from InquirerPy import inquirer
@@ -6,12 +7,11 @@ from prompt_toolkit.application import in_terminal
 from rich.markdown import Markdown
 from rich.style import Style
 
-from src.CLI.music import Player
 from src.CLI.core import *
+from src.CLI.music import Player
 
 
 class Commands:
-    YOUTUBE_API = config.get('YOUTUBE_API', None)
     MUSIC = Player()
     with open('./config/quickplay_save.json', encoding='utf-8') as __f:
         quickplay_save: dict = json.loads(__f.read())
@@ -36,18 +36,29 @@ class Commands:
             if not self.MUSIC.is_playing():
                 return await self.MUSIC.play()
 
-        with console.status(f"[light green]Fetching data...(Total {len(cmd_args)})"):
+        _vc = 0
+        with console.status(f"[light green]Fetching data...") as status:
             for url in cmd_args:
+
                 if url == '':
-                    continue
+                    pass
 
-                if 'youtube' in url and 'playlist' in url and self.YOUTUBE_API is not None:
-                    for t in await NetworkIO.fetch_youtube_playlist_info(url):
+                elif 'youtube' in url and 'playlist' in url and config.YOUTUBE_API is not None:
+                    playlist = await NetworkIO.fetch_youtube_playlist_info(url)
+                    _pvc = 0
+                    for t in playlist:
+                        status.update(f"[green]Fetching data...(Total urls:{_vc}/{len(cmd_args)} "
+                                      f"[yellow]playlist:{_pvc}/{len(playlist)}[/yellow])")
                         await self.MUSIC.add_track(t)
+                        _pvc += 1
 
-                await self.MUSIC.add_track(Track(webpage_url=url))
+                else:
+                    await self.MUSIC.add_track(Track(webpage_url=url))
 
-            console.print('[Console] Added all requested urls')
+                _vc += 1
+
+            console.print(
+                f'[Console] Added all requested urls (Total urls:{_vc}/{len(cmd_args)})')
 
         if self.MUSIC.nowplaying is None:
             await self.MUSIC.play()
@@ -241,10 +252,16 @@ class Commands:
             if not selections:
                 console.print('Selection cancelled.')
             else:
-                with console.status(f"[light green]Fetching data...(Total {len(selections)})"):
+                _ic = 0
+                with console.status(f"[light green]Fetching data...(Total {_ic}/{len(selections)})") as status:
                     for i in selections:
+                        _jc = 0
+                        _ljc = len(self.quickplay_save[i])
                         for j in self.quickplay_save[i]:
+                            status.update(
+                                f"[light green]Fetching data...(Total {_ic}/{len(selections)} {_jc}/{_ljc})")
                             await self.MUSIC.add_track(Track(webpage_url=j))
+                            _jc += 1
 
                     console.print(
                         '[Console] Added all selected quickplay urls')

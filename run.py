@@ -5,15 +5,15 @@ from time import sleep
 
 
 async def main():
-    Interface = importlib.import_module('.main', 'src.CLI').Interface
-    await Interface().entrypoint()
+    interface = importlib.import_module('.main', 'src.CLI')
+    await interface.Interface().entrypoint()
     return
 
 
 asyncio.run(main())
 
-#loop = asyncio.new_event_loop()
-#loop.run_until_complete(main())
+# loop = asyncio.new_event_loop()
+# loop.run_until_complete(main())
 
 sleep(3)
 
