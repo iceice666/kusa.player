@@ -1,4 +1,3 @@
-import asyncio
 from typing import Optional
 
 from InquirerPy import inquirer
@@ -21,11 +20,10 @@ class Commands:
         async with in_terminal():
             console.print('Unknown command')
 
-    def cmd_exit(self):
-        with open('./config/quickplay_save.json', encoding='utf-8', mode='w') as __f:
-            __f.write(json.dumps(self.quickplay_save))
+    @staticmethod
+    def cmd_exit():
         console.print(
-            'Thanks for using kusa! :partying_face: \n:party_popper: Bye~ Have a great day~ :party_popper:')
+            'Thanks for using kusa! :partying_face: \n:party_popper: Bye~ Have a great day~ :party_popper:\nClose in 3 secs.')
 
     @staticmethod
     def cmd_help():
@@ -233,6 +231,9 @@ class Commands:
                     name += i + ' '
 
             self.quickplay_save[name] = cmd_args
+
+        with open('./config/quickplay_save.json', encoding='utf-8', mode='w') as _f:
+            _f.write(json.dumps(self.quickplay_save))
 
     async def cmd_quickplay(self, cmd_args):
         if not cmd_args:

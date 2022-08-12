@@ -5,7 +5,7 @@ from time import sleep
 
 
 async def main():
-    interface = importlib.import_module('.main', 'src.CLI')
+    interface = importlib.import_module('.interface', 'src.CLI')
     await interface.Interface().entrypoint()
     return
 

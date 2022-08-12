@@ -46,7 +46,7 @@ Clear the queue.
 
 Skip the current playing song.
 
-! This command will make the current song no longer be repeated or looped.
+Warning: This command will make the current song no longer be repeated or looped.
 
 * `Command: skip | sk`
 * `Usage: skip`
@@ -60,13 +60,42 @@ Easier way to run command `skip` and `clear` simultaneously.
 
 ## pause | pa
 
+Pause the player.
+
+* `Command: pause | pa`
+* `Usage: pause`
+
 ## resume | re
+
+Resume the player.
+
+* `Command: resume | re`
+* `Usage: resume`
 
 ## loop
 
+Loop the queue.
+
+* `Command: loop`
+* `Usage: loop`
+
 ## repeat
 
+Repeat the current song
+
+* `Command: repeat`
+* `Usage: repeat`
+
 ## position | pos
+
+If you don't pass a argument, it will return the position of the current song.
+If you pass an integer, it will set the position by the given integer.
+If you pass a float (0>=n>1), it will set the position by converting the given float to a percentage.
+
+* `Command: position`
+* `Usage: position`
+* `Usage: position [integer]`
+* `Usage: position [float]`
 
 ## search | s
 
