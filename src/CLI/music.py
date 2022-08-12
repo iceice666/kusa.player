@@ -59,7 +59,8 @@ class Player:
     async def add_track(self, track):
         fetched_info = await NetworkIO.fetch_info(track)
 
-        if fetched_info is None: return
+        if fetched_info is None:
+            return
 
         self.queue += fetched_info
 
@@ -74,8 +75,9 @@ class Player:
             return
         self.nowplaying = self.queue.pop(0)
         if time.time() > self.nowplaying.expired_time:
-            console.print(
-                '[Player] [yellow]This link expired, re-fetching...[/yellow]')
+            async with in_terminal():
+                console.print(
+                    '[Player] [yellow]This link expired, re-fetching...[/yellow]')
             self.nowplaying.source_url = (await NetworkIO.fetch_info(self.nowplaying))[0].source_url
 
             self.nowplaying.expired_time = time.time() + 3600
