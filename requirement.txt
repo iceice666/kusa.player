@@ -1,8 +1,0 @@
-streamlink
-rich
-inquirerpy
-python-vlc
-youtube-dl
-urllib3
-autopep8
-mypy

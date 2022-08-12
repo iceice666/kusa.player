@@ -1,6 +1,20 @@
-from src.cli import Interface
+import asyncio
+import importlib
+import sys
+from time import sleep
 
 
-CLI = Interface()
+async def main():
+    interface = importlib.import_module('.interface', 'src.CLI')
+    await interface.Interface().entrypoint()
+    return
 
-CLI.run()
+
+asyncio.run(main())
+
+# loop = asyncio.new_event_loop()
+# loop.run_until_complete(main())
+
+sleep(3)
+
+sys.exit(0)

@@ -1,30 +1,23 @@
 
-from GIYA import *
 
+output = []
+n = int(input())
+si = input().split(" ")
+for i in si:
+    i = int(i)
+    if 100 >= i >= 0:
+        for jn,j in enumerate(output):
+            if j > i:
+                output.insert(jn,i)
 
-def help_(): print('help')
-def tp(player): print(f'tp {player}')
-def tpp(x, y, z): print(f"tp to {x} {y} {z}")
+         
+    if not output:
+        print("no data")
+    else:
+        n = len(output)
+        nn=n//2
+        if n % 2 == 1:
+            print(float(output[nn]))
+        elif n % 2 == 0:
 
-
-cmd = Dispatcher()
-
-
-cmd.register(Command('tp', 'teleport')
-             .argument([], help_)
-             .argument([str, ], tp)
-             .argument([int, int, int], tpp))\
-    .register(Command('kill')
-              .argument([], (lambda *_: print('You killed your self')))
-              .argument([str],
-                        (lambda *_: print(f'You killed a Noob'))))
-
-
-# test
-cmd.execute('tp')  # except 'help'
-cmd.execute('tp 0 0 0')  # except 'tp to 0 0 0'
-cmd.execute('teleport noob')  # except 'tp noob'
-cmd.execute('giya')  # except
-
-cmd.execute('kill')  # except
-cmd.execute('kill noob')
+            print(((output[nn]+output[nn-1])/2))
