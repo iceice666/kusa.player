@@ -79,7 +79,7 @@ class NetworkIO:
             func = cls.fetch_url_info
             arguments = {"webpage_url": track.webpage_url}
 
-        result = await func(**arguments)
+        result :list= await func(**arguments)
 
         if result is None:
             return
@@ -94,7 +94,7 @@ class NetworkIO:
         source_url = streamlink.streams(webpage_url).get('best', None)
         if source_url is None:
             return None
-        return Track(source_url=source_url.url)
+        return [Track(source_url=source_url.url)]
 
     @staticmethod
     async def fetch_youtube_url_info(webpage_url=None, video_id=None):
