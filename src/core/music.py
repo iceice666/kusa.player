@@ -5,13 +5,12 @@ from prompt_toolkit.application import in_terminal
 from rich.style import Style
 from rich.traceback import install
 
-from src.CLI.core import *
-from src.core.vlc_core import VLC
+from .vlc_core import VLC
 
 install(show_locals=True)
 
 
-class Player:
+class Player(VLC):
     flag_repeat: bool = False
     flag_loop: bool = False
     flag_skip: bool = False
@@ -21,37 +20,19 @@ class Player:
     nowplaying: Optional[Track] = None
 
     def __init__(self):
+        super().__init__()
         self._rl = asyncio.get_running_loop()
 
-        _v = VLC()
-        _v._playing_end = self._playing_end
-
-        self.player = _v
-
+        
     def execute(self, cmd_args):
         for c in cmd_args:
             exec(c.replace("$", "self."))
-
-    def volume(self, vol: Optional[int] = None):
-        return self.player.volume(vol)
-
-    def position(self, pos: int | float):
-        self.player.position(pos)
 
     def repeat(self):
         self.flag_repeat = not self.flag_repeat
 
     def loop(self):
         self.flag_loop = not self.flag_loop
-
-    def skip(self):
-        self.player.stop()
-
-    def pause(self):
-        self.player.pause()
-
-    def resume(self):
-        self.player.resume()
 
     def clear(self):
         self.queue = []
