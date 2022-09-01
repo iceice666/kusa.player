@@ -1,7 +1,5 @@
 # Kusa
 
-> There have another [Yank Note](https://github.com/purocean/yn) version [README.md](./README_yn.md)
-
 A music player based on vlc-player.
 
 ## Features
