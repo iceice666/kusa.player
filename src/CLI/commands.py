@@ -5,9 +5,11 @@ from InquirerPy.base import Choice
 from prompt_toolkit.application import in_terminal
 from rich.markdown import Markdown
 from rich.style import Style
+import json
 
-from src.CLI.core import *
-from src.CLI.music import Player
+from src.core import *
+from src.core.fetch import *
+from src.core.music import Player
 
 
 class Commands:

@@ -1,6 +1,10 @@
-# Kusa
 
-> There have another [Yank Note](https://github.com/purocean/yn) version [README.md](./README_yn.md)
+> Because this author is still a student (yeah im 15),
+> this project may not be updated very often.
+> <br>
+> Definitely not cause I'm lazy (ehe 🥲😂😅🥰😚
+
+# Kusa
 
 A music player based on vlc-player.
 

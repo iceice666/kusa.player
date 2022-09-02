@@ -3,8 +3,10 @@ import asyncio
 import InquirerPy
 from InquirerPy import inquirer
 
+from src.core import *
+
 from .commands import Commands
-from .core import console
+
 
 
 class Exit(Exception):
