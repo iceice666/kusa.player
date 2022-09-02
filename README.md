@@ -7,7 +7,6 @@
 
 # Kusa
 
-=======
 
 A music player based on vlc-player.
 
