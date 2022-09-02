@@ -5,7 +5,8 @@ from prompt_toolkit.application import in_terminal
 from rich.style import Style
 from rich.traceback import install
 
-from .vlc_core import VLC
+from .vlc import VLC
+from .core import *
 
 install(show_locals=True)
 
@@ -23,7 +24,7 @@ class Player(VLC):
         super().__init__()
         self._rl = asyncio.get_running_loop()
 
-        
+
     def execute(self, cmd_args):
         for c in cmd_args:
             exec(c.replace("$", "self."))
@@ -63,7 +64,7 @@ class Player(VLC):
 
             self.nowplaying.expired_time = time.time() + 3600
 
-        self.player.set_uri(self.nowplaying.source_url)
+        self.player.set_mrl(self.nowplaying.source_url)
 
         async with in_terminal():
             console.print(

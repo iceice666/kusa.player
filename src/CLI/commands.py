@@ -8,7 +8,7 @@ from rich.style import Style
 import json
 
 from src.core import *
-from src.core.fetch import *
+from src.core.core import *
 from src.core.music import Player
 
 
