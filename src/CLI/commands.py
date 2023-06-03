@@ -122,6 +122,9 @@ class Commands:
         self.cmd_clear()
         self.cmd_skip()
 
+    def cmd_remove(self, cmd_args):
+        self.MUSIC.queue.pop(int(cmd_args[0]))
+
     def cmd_pause(self):
         console.print('[Console] Paused')
         self.MUSIC.pause()

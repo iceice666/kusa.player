@@ -45,6 +45,9 @@ class Interface:
             case 'clear' | 'c':
                 self.commands.cmd_clear()
 
+            case 'remove' | 'r':
+                self.commands.cmd_remove(cmd_args)
+
             case 'stop' | 'st':
                 self.commands.cmd_stop()
 
