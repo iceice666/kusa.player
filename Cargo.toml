@@ -1,0 +1,13 @@
+[package]
+name = "rust-player"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+# audio
+rodio = {version = "0.17.1",features = ["symphonia-all"]}
+symphonia = "0.5.3"
+
+tokio = { version = "1", features = ["full"] }
