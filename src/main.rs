@@ -1,17 +1,21 @@
 mod track;
 
-use track::local::Local;
+use std::collections::VecDeque;
 
-use crate::track::Track;
+use track::local;
+use track::playlist;
 
 fn main() {
     println!("Welcome to use rust-player!");
 
-    let lotrack = Local {
-        source_uri: "music/local/music.ogg".to_string(),
-    };
+    let lotrack = local::track("music/local/music.ogg".to_string());
 
-    loop {
-        lotrack.play();
-    }
+    let mut pl = playlist();
+
+    let mut new_track: VecDeque<_> = [lotrack].into();
+
+    pl.tracks.append(&mut new_track);
+    pl.play();
+
+    loop {}
 }

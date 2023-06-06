@@ -1,58 +1,55 @@
 use rodio::decoder::DecoderError;
-use rodio::{Decoder, OutputStream, Sink};
+use rodio::Decoder;
 use std::fs::File;
 use std::io::BufReader;
 
-use super::Track;
+use super::PlayableTrack;
 
 pub struct Local {
-    pub source_uri: String,
+    source_uri: String,
 }
 
-impl Track for Local {
+impl PlayableTrack for Local {
     fn is_expired(&self) -> bool {
         false
     }
 
-    fn play(&self) {
-        // Get a output stream handle to the default physical sound device
-        let (_stream, stream_handle) = OutputStream::try_default().unwrap();
-        let sink = Sink::try_new(&stream_handle).unwrap();
-
+    fn refresh(&mut self) {
         // Load a sound from a file, using a path relative to Cargo.toml
-        let file = BufReader::new(File::open(&self.source_uri).unwrap());
+    }
+
+    fn get_source(&mut self) -> Option<Decoder<BufReader<File>>> {
+        if self.is_expired() {
+            self.refresh();
+        }
 
         // Decode that sound file into a source
-        let source = match Decoder::new(file) {
-            Ok(v) => v,
+        let file = File::open(&self.source_uri).unwrap();
+        let source = match Decoder::new(BufReader::new(file)) {
+            Ok(v) => Some(v),
             Err(e) => match e {
                 DecoderError::IoError(err) => {
                     print!("IoError {}", err);
-                    return;
+                    return None;
                 }
                 DecoderError::DecodeError(err) => {
                     print!("DecodeError {}", err);
-                    return;
+                    return None;
                 }
                 DecoderError::LimitError(err) => {
                     print!("LimitError {}", err);
-                    return;
+                    return None;
                 }
                 _ => {
-                    return;
+                    return None;
                 }
             },
         };
 
-        // Play the sound directly on the device
-        sink.append(source);
-
-        // The sound plays in a separate thread. This call will block the current thread until the sink
-        // has finished playing all its queued sounds.
-        sink.sleep_until_end();
+        source
     }
+}
 
-    fn refresh(&self) -> String {
-        self.source_uri.clone()
-    }
+pub fn track(source_uri: String) -> Local {
+    Local { source_uri }
 }
