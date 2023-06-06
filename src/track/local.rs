@@ -1,3 +1,4 @@
+use rodio::decoder::DecoderError;
 use rodio::{Decoder, OutputStream, Sink};
 use std::fs::File;
 use std::io::BufReader;
@@ -22,7 +23,26 @@ impl Track for Local {
         let file = BufReader::new(File::open(&self.source_uri).unwrap());
 
         // Decode that sound file into a source
-        let source = Decoder::new(file).unwrap();
+        let source = match Decoder::new(file) {
+            Ok(v) => v,
+            Err(e) => match e {
+                DecoderError::IoError(err) => {
+                    print!("IoError {}", err);
+                    return;
+                }
+                DecoderError::DecodeError(err) => {
+                    print!("DecodeError {}", err);
+                    return;
+                }
+                DecoderError::LimitError(err) => {
+                    print!("LimitError {}", err);
+                    return;
+                }
+                _ => {
+                    return;
+                }
+            },
+        };
 
         // Play the sound directly on the device
         sink.append(source);

@@ -8,8 +8,10 @@ fn main() {
     println!("Welcome to use rust-player!");
 
     let lotrack = Local {
-        source_uri: "music/local/music.opus".to_string(),
+        source_uri: "music/local/music.ogg".to_string(),
     };
 
-    lotrack.play();
+    loop {
+        lotrack.play();
+    }
 }

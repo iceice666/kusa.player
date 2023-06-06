@@ -1,5 +1,5 @@
 pub mod local;
-pub mod youtube;
+// pub mod youtube;
 
 pub trait Track {
     /// `is_expired` check is the uri expired
@@ -10,6 +10,4 @@ pub trait Track {
     fn play(&self);
 }
 
-pub trait TrackInfo {
-    // add code here
-}
+pub trait TrackInfo {}

@@ -8,6 +8,6 @@ edition = "2021"
 [dependencies]
 # audio
 rodio = {version = "0.17.1",features = ["symphonia-all"]}
-symphonia = "0.5.3"
 
+symphonia = "0.5.3"
 tokio = { version = "1", features = ["full"] }
