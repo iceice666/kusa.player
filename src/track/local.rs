@@ -1,12 +1,12 @@
-use rodio::decoder::DecoderError;
 use rodio::Decoder;
 use std::fs::File;
 use std::io::BufReader;
 
-use super::PlayableTrack;
+use super::{empty_tackinfo, PlayableTrack, TrackInfo};
 
 pub struct Local {
     source_uri: String,
+    info: TrackInfo,
 }
 
 impl PlayableTrack for Local {
@@ -18,38 +18,25 @@ impl PlayableTrack for Local {
         // Load a sound from a file, using a path relative to Cargo.toml
     }
 
-    fn get_source(&mut self) -> Option<Decoder<BufReader<File>>> {
+    fn get_source(&mut self) -> Decoder<BufReader<File>> {
         if self.is_expired() {
             self.refresh();
         }
 
         // Decode that sound file into a source
-        let file = File::open(&self.source_uri).unwrap();
-        let source = match Decoder::new(BufReader::new(file)) {
-            Ok(v) => Some(v),
-            Err(e) => match e {
-                DecoderError::IoError(err) => {
-                    print!("IoError {}", err);
-                    return None;
-                }
-                DecoderError::DecodeError(err) => {
-                    print!("DecodeError {}", err);
-                    return None;
-                }
-                DecoderError::LimitError(err) => {
-                    print!("LimitError {}", err);
-                    return None;
-                }
-                _ => {
-                    return None;
-                }
-            },
-        };
-
+        let file = File::open(self.source_uri.clone()).unwrap();
+        let source = Decoder::new(BufReader::new(file)).unwrap();
         source
+    }
+
+    fn info(&self) -> TrackInfo {
+        self.info.clone()
     }
 }
 
 pub fn track(source_uri: String) -> Local {
-    Local { source_uri }
+    Local {
+        source_uri,
+        info: empty_tackinfo(),
+    }
 }

@@ -5,17 +5,34 @@ use rodio::{Decoder, OutputStream, Sink};
 pub mod local;
 // pub mod youtube;
 
+#[derive(Clone)]
+pub struct TrackInfo {
+    title: String,
+    author: String,
+}
+
+pub fn empty_tackinfo() -> TrackInfo {
+    TrackInfo {
+        title: "<Untitled>".to_string(),
+        author: "<someone>".to_string(),
+    }
+}
+
 pub trait PlayableTrack {
     /// `is_expired` check is the uri expired
     /// `refresh` refresh uri and playable track/uri
     fn is_expired(&self) -> bool;
     fn refresh(&mut self);
-    fn get_source(&mut self) -> Option<Decoder<BufReader<File>>>;
+    fn get_source(&mut self) -> Decoder<BufReader<File>>;
+    fn info(&self) -> TrackInfo;
 }
 
 pub struct Playlist<T: PlayableTrack> {
     pub tracks: VecDeque<T>,
     sink: Sink,
+    pub do_repeat: bool,
+    pub do_loop: bool,
+    pub track_info: TrackInfo,
 }
 
 impl<T> Playlist<T>
@@ -63,16 +80,31 @@ where
         self.sink.skip_one();
     }
 
-    // tracks control
-    pub fn play(&mut self) -> Option<T> {
-        if !self.tracks.is_empty() && self.sink.empty() {
-            let mut first_track = self.tracks.pop_front().unwrap();
-            let source = first_track.get_source().unwrap();
-            self.sink.append(source);
+    pub fn toggle_repeat(&mut self) {
+        self.do_repeat = !self.do_repeat;
+    }
 
-            Some(first_track)
-        } else {
-            None
+    pub fn toggle_loop(&mut self) {
+        self.do_loop = !self.do_loop;
+    }
+
+    pub fn play(&mut self) {
+        let (_stream, stream_handle) = OutputStream::try_default().unwrap();
+        self.sink = Sink::try_new(&stream_handle).unwrap();
+
+        while self.tracks.len() > 0 {
+            let mut next_track = self.tracks.pop_front().unwrap();
+            let source = next_track.get_source();
+            self.track_info = next_track.info();
+
+            self.sink.append(source);
+            self.sink.sleep_until_end();
+
+            if self.do_repeat {
+                self.tracks.insert(0, next_track);
+            } else if self.do_repeat {
+                self.tracks.insert(self.tracks.len(), next_track);
+            }
         }
     }
 }
@@ -82,11 +114,11 @@ pub fn playlist<T: PlayableTrack>() -> Playlist<T> {
     let (_stream, stream_handle) = OutputStream::try_default().unwrap();
     let sink = Sink::try_new(&stream_handle).unwrap();
 
-    // Set default volume
-    sink.set_volume(0.3);
-
     Playlist {
         tracks: VecDeque::new(),
         sink,
+        do_repeat: false,
+        do_loop: false,
+        track_info: empty_tackinfo(),
     }
 }
