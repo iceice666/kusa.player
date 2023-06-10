@@ -2,7 +2,7 @@ use rodio::Decoder;
 use std::fs::File;
 use std::io::BufReader;
 
-use super::{empty_tackinfo, PlayableTrack, TrackInfo};
+use super::{empty_trackinfo, PlayableTrack, TrackInfo};
 
 pub struct Local {
     source_uri: String,
@@ -14,7 +14,7 @@ impl PlayableTrack for Local {
         false
     }
 
-    fn refresh(&mut self) {
+    fn refresh(&self) {
         // Load a sound from a file, using a path relative to Cargo.toml
     }
 
@@ -37,6 +37,6 @@ impl PlayableTrack for Local {
 pub fn track(source_uri: String) -> Local {
     Local {
         source_uri,
-        info: empty_tackinfo(),
+        info: empty_trackinfo(),
     }
 }

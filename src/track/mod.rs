@@ -3,7 +3,7 @@ use std::{collections::VecDeque, fs::File, io::BufReader};
 use rodio::{Decoder, OutputStream, Sink};
 
 pub mod local;
-// pub mod youtube;
+pub mod youtube;
 
 #[derive(Clone)]
 pub struct TrackInfo {
@@ -11,7 +11,7 @@ pub struct TrackInfo {
     author: String,
 }
 
-pub fn empty_tackinfo() -> TrackInfo {
+pub fn empty_trackinfo() -> TrackInfo {
     TrackInfo {
         title: "<Untitled>".to_string(),
         author: "<someone>".to_string(),
@@ -22,7 +22,7 @@ pub trait PlayableTrack {
     /// `is_expired` check is the uri expired
     /// `refresh` refresh uri and playable track/uri
     fn is_expired(&self) -> bool;
-    fn refresh(&mut self);
+    fn refresh(&self);
     fn get_source(&mut self) -> Decoder<BufReader<File>>;
     fn info(&self) -> TrackInfo;
 }
@@ -36,9 +36,30 @@ pub struct Playlist<T: PlayableTrack> {
 }
 
 impl<T> Playlist<T>
-where
-    T: PlayableTrack,
+    where
+        T: PlayableTrack,
 {
+    // track
+    pub fn append(&mut self, track: T) {
+        self.tracks.push_back(track);
+    }
+    pub fn insert(&mut self, index: usize, track: T) {
+        self.tracks.insert(index, track)
+    }
+
+    pub fn pop(&mut self, index: usize) -> T {
+        if index == 0 {
+            self.tracks.pop_front()
+        } else if index == self.tracks.len() {
+            self.tracks.pop_back()
+        } else {
+            let mut temp_tracks = self.tracks.split_off(index);
+            let result = temp_tracks.pop_front().unwrap();
+            self.tracks.append(&mut temp_tracks);
+            result
+        }
+    }
+
     // sink / player funcitons
     pub fn set_volume(&self, vol: f32) {
         self.sink.set_volume(vol);
@@ -114,11 +135,13 @@ pub fn playlist<T: PlayableTrack>() -> Playlist<T> {
     let (_stream, stream_handle) = OutputStream::try_default().unwrap();
     let sink = Sink::try_new(&stream_handle).unwrap();
 
+    sink.set_volume(0.3);
+
     Playlist {
         tracks: VecDeque::new(),
         sink,
         do_repeat: false,
         do_loop: false,
-        track_info: empty_tackinfo(),
+        track_info: empty_trackinfo(),
     }
 }
