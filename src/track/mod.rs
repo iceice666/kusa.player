@@ -1,7 +1,7 @@
-use std::{collections::VecDeque, fs::File, io::BufReader};
+use std::collections::VecDeque;
 
-use rodio::{Decoder, OutputStream, Sink};
-
+use anyhow::Result;
+use rodio::{OutputStream, Sink};
 pub mod local;
 pub mod youtube;
 
@@ -18,16 +18,20 @@ pub fn empty_trackinfo() -> TrackInfo {
     }
 }
 
+////////////////////////////////////////////////////////
 pub trait PlayableTrack {
     /// `is_expired` check is the uri expired
     /// `refresh` refresh uri and playable track/uri
     fn is_expired(&self) -> bool;
-    fn refresh(&self);
-    fn get_source(&mut self) -> Decoder<BufReader<File>>;
+    fn refresh(&mut self);
+    fn play(&mut self, sink: Sink) -> Result<()>;
     fn info(&self) -> TrackInfo;
 }
 
-pub struct Playlist<T: PlayableTrack> {
+pub struct Playlist<T>
+where
+    T: PlayableTrack,
+{
     pub tracks: VecDeque<T>,
     sink: Sink,
     pub do_repeat: bool,
@@ -36,8 +40,8 @@ pub struct Playlist<T: PlayableTrack> {
 }
 
 impl<T> Playlist<T>
-    where
-        T: PlayableTrack,
+where
+    T: PlayableTrack,
 {
     // track
     pub fn append(&mut self, track: T) {
@@ -49,12 +53,17 @@ impl<T> Playlist<T>
 
     pub fn pop(&mut self, index: usize) -> T {
         if index == 0 {
-            self.tracks.pop_front()
+            // the first
+            self.tracks.pop_front().unwrap()
         } else if index == self.tracks.len() {
-            self.tracks.pop_back()
+            // the last
+            self.tracks.pop_back().unwrap()
         } else {
+            // split the track by index
             let mut temp_tracks = self.tracks.split_off(index);
+            // the item we want will be the first of the second track
             let result = temp_tracks.pop_front().unwrap();
+            // chain together
             self.tracks.append(&mut temp_tracks);
             result
         }
@@ -109,17 +118,33 @@ impl<T> Playlist<T>
         self.do_loop = !self.do_loop;
     }
 
-    pub fn play(&mut self) {
+    pub fn play<F>(&mut self, callback: F)
+    where
+        F: Fn(),
+    {
         let (_stream, stream_handle) = OutputStream::try_default().unwrap();
-        self.sink = Sink::try_new(&stream_handle).unwrap();
 
         while self.tracks.len() > 0 {
+            // generate new sink to play
+            let sink = Sink::try_new(&stream_handle).unwrap();
+            // get the next track
             let mut next_track = self.tracks.pop_front().unwrap();
-            let source = next_track.get_source();
+            // get track info
             self.track_info = next_track.info();
+            // refresh source if need
+            if next_track.is_expired() {
+                next_track.refresh();
+            }
+            // get the source and apply
+            if let Err(e) = next_track.play(sink) {
+                println!(
+                    "This track is broken and with error msg following:\n{:?}",
+                    e
+                );
+                continue;
+            }
 
-            self.sink.append(source);
-            self.sink.sleep_until_end();
+            callback();
 
             if self.do_repeat {
                 self.tracks.insert(0, next_track);
@@ -130,7 +155,10 @@ impl<T> Playlist<T>
     }
 }
 
-pub fn playlist<T: PlayableTrack>() -> Playlist<T> {
+pub fn playlist<T>() -> Playlist<T>
+where
+    T: PlayableTrack,
+{
     // Get a output stream handle to the default physical sound device
     let (_stream, stream_handle) = OutputStream::try_default().unwrap();
     let sink = Sink::try_new(&stream_handle).unwrap();

@@ -1,8 +1,8 @@
-use rodio::Decoder;
+use super::{empty_trackinfo, PlayableTrack, TrackInfo};
+use anyhow::Result;
+use rodio::{Decoder, Sink};
 use std::fs::File;
 use std::io::BufReader;
-
-use super::{empty_trackinfo, PlayableTrack, TrackInfo};
 
 pub struct Local {
     source_uri: String,
@@ -14,19 +14,17 @@ impl PlayableTrack for Local {
         false
     }
 
-    fn refresh(&self) {
-        // Load a sound from a file, using a path relative to Cargo.toml
-    }
+    fn refresh(&mut self) {}
 
-    fn get_source(&mut self) -> Decoder<BufReader<File>> {
-        if self.is_expired() {
-            self.refresh();
-        }
-
+    fn play(&mut self, sink: Sink) -> Result<()> {
         // Decode that sound file into a source
         let file = File::open(self.source_uri.clone()).unwrap();
         let source = Decoder::new(BufReader::new(file)).unwrap();
-        source
+
+        sink.append(source);
+        sink.sleep_until_end();
+
+        Ok(())
     }
 
     fn info(&self) -> TrackInfo {
