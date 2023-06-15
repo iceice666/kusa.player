@@ -3,7 +3,7 @@ use crate::util::downloader::PartialRangeIter;
 use anyhow::{bail, Result};
 use reqwest::{
     header::{CONTENT_LENGTH, RANGE},
-    StatusCode, Url,
+    StatusCode,
 };
 use rodio::{Decoder, Sink};
 use std::{
@@ -17,11 +17,16 @@ pub struct Youtube {
     uri: String,
     info: TrackInfo,
     ytdlp_exc: String,
+    cached_file: String,
 }
 
 impl PlayableTrack for Youtube {
     fn is_expired(&self) -> bool {
-        true
+        if 0 == fs::metadata(self.cached_file.clone()).unwrap().len() {
+            true
+        } else {
+            false
+        }
     }
 
     fn refresh(&mut self) {
@@ -31,40 +36,40 @@ impl PlayableTrack for Youtube {
             .unwrap();
 
         self.source_uri = String::from_utf8_lossy(&output.stdout).trim().to_string();
-
-        let url = Url::parse(&self.source_uri).unwrap();
-
-        println!("{:?}", url);
     }
 
     fn play(&mut self, sink: Sink) -> Result<()> {
-        const CHUNK_SIZE: u32 = 10240;
+        let mut saved = File::create(&self.cached_file)?;
 
-        let client = reqwest::blocking::Client::new();
-        let response = client.head(&self.source_uri).send()?;
-        let length = match response.headers().get(CONTENT_LENGTH) {
-            Some(v) => v,
-            None => bail!("response doesn't include the content length"),
-        };
-        let length = u64::from_str(length.to_str()?)?;
+        if 0 == fs::metadata(self.cached_file.clone())?.len() {
+            const CHUNK_SIZE: u32 = 10240;
 
-        let mut saved = File::create("music/download/save.m4a")?;
-        println!("starting download...");
-        for range in PartialRangeIter::new(0, length - 1, CHUNK_SIZE)? {
-            println!("range {:?}", range);
-            let mut response = client.get(&self.source_uri).header(RANGE, range).send()?;
+            let client = reqwest::blocking::Client::new();
+            let response = client.head(&self.source_uri).send()?;
+            let length = match response.headers().get(CONTENT_LENGTH) {
+                Some(v) => v,
+                None => bail!("response doesn't include the content length"),
+            };
+            let length = u64::from_str(length.to_str()?)?;
 
-            let status = response.status();
-            if !(status == StatusCode::OK || status == StatusCode::PARTIAL_CONTENT) {
-                bail!("Unexpected server response: {}", status)
+            saved = File::create("music/download/save.m4a")?;
+            println!("starting download...");
+            for range in PartialRangeIter::new(0, length - 1, CHUNK_SIZE)? {
+                println!("range {:?}", range);
+                let mut response = client.get(&self.source_uri).header(RANGE, range).send()?;
+
+                let status = response.status();
+                if !(status == StatusCode::OK || status == StatusCode::PARTIAL_CONTENT) {
+                    bail!("Unexpected server response: {}", status)
+                }
+                std::io::copy(&mut response, &mut saved)?;
             }
-            std::io::copy(&mut response, &mut saved)?;
+
+            let content = response.text()?;
+            std::io::copy(&mut content.as_bytes(), &mut saved)?;
+
+            saved.sync_all().expect("Failed to sync file");
         }
-
-        let content = response.text()?;
-        std::io::copy(&mut content.as_bytes(), &mut saved)?;
-
-        saved.sync_all().expect("Failed to sync file");
 
         let source = Decoder::new(BufReader::new(saved))?;
 
@@ -82,14 +87,13 @@ impl PlayableTrack for Youtube {
 }
 
 pub fn track(uri: String) -> Youtube {
-    let cached_file: String = format!(
-        "music/download/{}.m4a",
+    let mut cached_file: String = format!(
+        "music/download/youtube.{}.m4a",
         uri.split(',').collect::<Vec<&str>>().pop().unwrap()
     );
 
-    if let Ok(metadata) = fs::metadata(cached_file) {}
-
     Youtube {
+        cached_file,
         uri,
         source_uri: "".to_string(),
         info: empty_trackinfo(),
