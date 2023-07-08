@@ -1,9 +1,8 @@
 
 
-> Because the author is still a student ,
-> this project may not be updated very often.
-> <br>
-> Definitely not cause I'm lazy (ehe 🥲😂😅🥰😚
+
+> this branch wont be updated anymore.
+
 
 # Kusa
 
