@@ -17,6 +17,7 @@ pub struct Youtube {
     uri: String,
     info: TrackInfo,
     ytdlp_exc: String,
+    ffmpeg_exc: String,
     cached_file: String,
 }
 
@@ -30,8 +31,9 @@ impl PlayableTrack for Youtube {
     }
 
     fn refresh(&mut self) {
+        // download m4a file
         let output = Command::new(&self.ytdlp_exc)
-            .args(["-g", "-f", "m4a", &self.uri])
+            .args(["-g", "-f", "bestaudio", &self.uri])
             .output()
             .unwrap();
 
@@ -42,33 +44,43 @@ impl PlayableTrack for Youtube {
         let mut saved = File::create(&self.cached_file)?;
 
         if 0 == fs::metadata(self.cached_file.clone())?.len() {
-            const CHUNK_SIZE: u32 = 10240;
+            {
+                // download file
+                const CHUNK_SIZE: u32 = 10240;
 
-            let client = reqwest::blocking::Client::new();
-            let response = client.head(&self.source_uri).send()?;
-            let length = match response.headers().get(CONTENT_LENGTH) {
-                Some(v) => v,
-                None => bail!("response doesn't include the content length"),
-            };
-            let length = u64::from_str(length.to_str()?)?;
+                let client = reqwest::blocking::Client::new();
+                let response = client.head(&self.source_uri).send()?;
+                let length = match response.headers().get(CONTENT_LENGTH) {
+                    Some(v) => v,
+                    None => bail!("response doesn't include the content length"),
+                };
+                let length = u64::from_str(length.to_str()?)?;
 
-            saved = File::create("music/download/save.m4a")?;
-            println!("starting download...");
-            for range in PartialRangeIter::new(0, length - 1, CHUNK_SIZE)? {
-                println!("range {:?}", range);
-                let mut response = client.get(&self.source_uri).header(RANGE, range).send()?;
+                saved = File::create("music/download/save.tmp")?;
+                println!("starting download...");
+                for range in PartialRangeIter::new(0, length - 1, CHUNK_SIZE)? {
+                    println!("range {:?}", range);
+                    let mut response = client.get(&self.source_uri).header(RANGE, range).send()?;
 
-                let status = response.status();
-                if !(status == StatusCode::OK || status == StatusCode::PARTIAL_CONTENT) {
-                    bail!("Unexpected server response: {}", status)
+                    let status = response.status();
+                    if !(status == StatusCode::OK || status == StatusCode::PARTIAL_CONTENT) {
+                        bail!("Unexpected server response: {}", status)
+                    }
+                    std::io::copy(&mut response, &mut saved)?;
                 }
-                std::io::copy(&mut response, &mut saved)?;
+
+                let content = response.text()?;
+                std::io::copy(&mut content.as_bytes(), &mut saved)?;
+
+                saved.sync_all().expect("Failed to sync file");
             }
-
-            let content = response.text()?;
-            std::io::copy(&mut content.as_bytes(), &mut saved)?;
-
-            saved.sync_all().expect("Failed to sync file");
+            {
+                // convert file to m4a
+                let output = Command::new(&self.ytdlp_exc)
+                    .args(["-g", "-f", "bestaudio", &self.uri])
+                    .output()
+                    .unwrap();
+            }
         }
 
         let source = Decoder::new(BufReader::new(saved))?;
@@ -98,5 +110,6 @@ pub fn track(uri: String) -> Youtube {
         source_uri: "".to_string(),
         info: empty_trackinfo(),
         ytdlp_exc: "yt-dlp.exe".to_string(),
+        ffmpeg_exc: "ffmpeg.exe".to_string(),
     }
 }
