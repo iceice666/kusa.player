@@ -1,40 +1,26 @@
-use super::{empty_trackinfo, PlayableTrack, TrackInfo};
-use anyhow::Result;
-use rodio::{Decoder, Sink};
+use crate::track::Playable;
+use std::fs;
 use std::fs::File;
-use std::io::BufReader;
 
-pub struct Local {
-    source_uri: String,
-    info: TrackInfo,
+use anyhow::Result as anyResult;
+
+struct LocalTrack<'a> {
+    uri: &'a str,
+    available: bool,
 }
 
-impl PlayableTrack for Local {
-    fn is_expired(&self) -> bool {
-        false
+impl Playable for LocalTrack<'a> {
+    fn get_uri(&self) -> &'a str {
+        todo!()
     }
 
-    fn refresh(&mut self) {}
-
-    fn play(&mut self, sink: Sink) -> Result<()> {
-        // Decode that sound file into a source
-        let file = File::open(self.source_uri.clone()).unwrap();
-        let source = Decoder::new(BufReader::new(file)).unwrap();
-
-        sink.append(source);
-        sink.sleep_until_end();
-
-        Ok(())
+    fn refresh(&mut self) {
+        todo!()
     }
 
-    fn info(&self) -> TrackInfo {
-        self.info.clone()
-    }
-}
+    fn is_available(&self) -> anyResult<bool> {
+        let file = File::open(self.uri)?;
 
-pub fn track(source_uri: String) -> Local {
-    Local {
-        source_uri,
-        info: empty_trackinfo(),
+        Ok(file.metadata()?.is_file())
     }
 }

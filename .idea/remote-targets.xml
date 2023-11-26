@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="RemoteTargetsManager">
+    <targets>
+      <target name="WSL - Arch" type="wsl" uuid="845079f9-c081-4119-ae8e-7f4086645933">
+        <config>
+          <option name="distributionMsId" value="Arch" />
+          <option name="projectRootOnTarget" value="{exitCode=0, timeout=false, cancelled=false, stdout=/mnt/c/Users/IceIc/AppData/Local/Programs/RustRover/jbr/bin&#10;, stderr=}/kusa.player" />
+        </config>
+        <ContributedStateBase type="RsLanguageRuntime">
+          <config>
+            <option name="cargoPath" value="/usr/sbin/cargo" />
+            <option name="cargoVersion" value="1.71.1 (7f1d04c00 2023-07-29)" />
+            <option name="rustcPath" value="/usr/sbin/rustc" />
+            <option name="rustcVersion" value="1.71.1 (eb26296b5 2023-08-03)" />
+          </config>
+        </ContributedStateBase>
+      </target>
+    </targets>
+  </component>
+</project>
