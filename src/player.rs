@@ -1,6 +1,16 @@
-use crate::track::Playable;
+use crate::track::{EmptyTrack, Playable, Track};
 use std::collections::LinkedList;
 
 struct Player {
-    playlist: LinkedList<Box<dyn Playable>>,
+    playlist: LinkedList<Track>,
+    current_track: Track,
+}
+
+impl Player {
+    fn new() -> Player {
+        Player {
+            playlist: LinkedList::new(),
+            current_track: Box::new(EmptyTrack::new()),
+        }
+    }
 }

@@ -3,40 +3,50 @@ use std::error::Error;
 use anyhow::Result as anyResult;
 mod local;
 
+pub type Track = Box<dyn Playable>;
+
 pub trait Playable {
     // Player will get the uri and play it
-    fn get_uri(&self) -> &str;
+    fn get_source(&self) -> &Source;
     // Player will run it when `is_available` is false
-    fn refresh(&mut self);
+    fn refresh(&mut self) {}
     // This method will be called to check the playable source is available
-    fn is_available(&self) -> anyResult<bool>;
+    fn is_available(&self) -> anyResult<()> {
+        Ok(())
+    }
 }
 
-struct TestTrack<'a> {
-    uri: &'a str,
-    available: bool,
+#[derive(Debug)]
+pub enum SourceType {
+    LocalFile,
+    RemoteFile,
+    Stream,
+    Empty,
 }
 
-impl<'a> TestTrack<'a> {
-    fn new(uri: &'a str) -> Self {
-        Self {
-            uri,
-            available: false,
+#[derive(Debug)]
+pub struct Source {
+    uri: String,
+    source_type: SourceType,
+}
+
+pub struct EmptyTrack {
+    source: Source,
+}
+
+impl EmptyTrack {
+    pub fn new() -> EmptyTrack {
+        EmptyTrack {
+            source: Source {
+                uri: String::new(),
+                source_type: SourceType::Empty,
+            },
         }
     }
+}
 
-    fn get_uri(&self) -> &'a str {
-        println!("uri: {}", self.uri);
-        self.uri
-    }
-
-    fn refresh(&mut self) {
-        println!("refresh");
-        let yee = "another uri";
-        self.uri = yee;
-    }
-
-    fn is_available(&self) -> bool {
-        self.available
+impl Playable for EmptyTrack {
+    fn get_source(&self) -> &Source {
+        &self.source
     }
 }
