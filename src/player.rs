@@ -13,4 +13,12 @@ impl Player {
             current_track: Box::new(EmptyTrack::new()),
         }
     }
+
+    async fn play(&mut self){
+
+        while self.playlist.len() > 0 {
+            
+        }
+
+    }
 }

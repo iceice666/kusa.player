@@ -24,9 +24,13 @@ impl LocalTrack {
 }
 
 impl Playable for LocalTrack {
+    fn get_source(&self) -> &Source {
+        &self.source
+    }
+
     fn refresh(&mut self) {
         if self.file.is_none() {
-           self.file = File::open(&self.source.uri).ok();
+            self.file = File::open(&self.source.uri).ok();
         }
     }
 
@@ -41,9 +45,5 @@ impl Playable for LocalTrack {
                 self.source.uri.to_string()
             ))),
         }
-    }
-
-    fn get_source(&self) -> &Source {
-        &self.source
     }
 }
