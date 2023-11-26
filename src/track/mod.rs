@@ -26,8 +26,8 @@ pub enum SourceType {
 
 #[derive(Debug)]
 pub struct Source {
-    uri: String,
-    source_type: SourceType,
+    pub(crate) uri: String,
+    pub(crate) source_type: SourceType,
 }
 
 pub struct EmptyTrack {
