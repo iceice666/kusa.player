@@ -17,3 +17,5 @@ Cargo.lock
 
 music/
 !music/test
+
+.idea/

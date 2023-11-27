@@ -1,5 +1,3 @@
-use std::error::Error;
-
 use anyhow::Result as anyResult;
 mod local;
 
@@ -20,7 +18,8 @@ pub trait Playable {
 pub enum SourceType {
     LocalFile,
     RemoteFile,
-    Stream,
+    Streamlink,
+    OtherStream,
     Empty,
 }
 

@@ -7,4 +7,6 @@ pub enum TrackError {
     SourceIsNotAFile(String),
     #[error("Given source is missing")]
     SourceIsMissing,
+    #[error("This is a empty source")]
+    SourceIsEmpty,
 }
