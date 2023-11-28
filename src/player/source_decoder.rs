@@ -1,4 +1,4 @@
-use crate::error::TrackError;
+use crate::track::error::TrackError;
 use crate::track::{Source, SourceType};
 use anyhow::anyhow;
 use rodio::Decoder;

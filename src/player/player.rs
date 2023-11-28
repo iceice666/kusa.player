@@ -1,16 +1,26 @@
-use crate::source_decoder::SourceDecoder;
+use super::error::PlayerError;
+use crate::player::SourceDecoder;
+use crate::track::error::TrackError;
 use crate::track::Track;
-use rodio::Sink;
+use anyhow::anyhow;
+use rand::Rng;
+use rodio::{Sink, Source};
 use std::collections::VecDeque;
+
 type AnyResult<T = ()> = anyhow::Result<T>;
 
-struct Player {
+pub struct Player {
     playlist: VecDeque<Track>,
     current_track: Option<Track>,
-    flag_exit: bool,
-    flag_repeat: bool,
-    flag_loop: bool,
+    flag: Flag,
     sink: Sink,
+}
+
+pub struct Flag {
+    exit: bool,
+    repeat: bool,
+    loop_: bool,
+    random: bool,
 }
 
 fn new_sink() -> AnyResult<Sink> {
@@ -21,28 +31,32 @@ fn new_sink() -> AnyResult<Sink> {
 }
 
 impl Player {
-    fn new() -> AnyResult<Player> {
+    pub fn new() -> AnyResult<Player> {
         Ok(Player {
             playlist: VecDeque::new(),
             current_track: None,
-            flag_exit: false,
-            flag_loop: false,
-            flag_repeat: false,
             sink: new_sink()?,
+            flag: Flag {
+                exit: false,
+                repeat: false,
+                loop_: false,
+                random: false,
+            },
         })
     }
 
-    fn update_current_track(&mut self) {
+    fn update_current_track(&mut self) -> AnyResult {
         let prelaod = loop {
             if self.playlist.is_empty() {
                 break None;
             }
 
             let t = {
-                if self.flag_loop {
-                    self.playlist.pop_front()
-                } else if self.flag_repeat {
+                if self.flag.repeat {
                     self.current_track.take()
+                } else if self.flag.random {
+                    self.playlist
+                        .remove(rand::thread_rng().gen_range(0..self.playlist.len()))
                 } else {
                     self.playlist.pop_front()
                 }
@@ -53,31 +67,41 @@ impl Player {
             }
         };
 
+        if self.flag.loop_ {
+            if let Some(v) = self.current_track.take() {
+                self.playlist.push_back(v)
+            }
+        }
+
         self.current_track = prelaod;
+
+        Ok(())
     }
 
-    pub async fn mainloop(mut self) -> AnyResult {
-        while !self.flag_exit {
-            if self.playlist.is_empty() {
-                continue;
-            }
+    async fn play_track(&mut self) -> AnyResult {
+        if self.flag.exit {
+            return Err(anyhow!(PlayerError::PlayerHasExited));
+        };
 
-            self.update_current_track();
-
-            if self.current_track.is_none() {
-                continue;
-            }
-
-            let track = self.current_track.as_ref().unwrap();
-
-            let source = track.get_source();
-
-            let decoder = SourceDecoder::new(source).await?;
-
-            // let duration = decoder.total_duration();
-
-            self.sink.append(decoder);
+        if self.playlist.is_empty() {
+            return Err(anyhow!(PlayerError::PlaylistIsEmpty));
         }
+
+        self.update_current_track()?;
+
+        if self.current_track.is_none() {
+            return Err(anyhow!(TrackError::SourceIsMissing));
+        }
+
+        let track = self.current_track.as_ref().unwrap();
+
+        let source = track.get_source();
+
+        let decoder = SourceDecoder::new(source).await?;
+
+        let duration = Source::total_duration(&decoder);
+
+        self.sink.append(decoder);
 
         Ok(())
     }

@@ -4,12 +4,11 @@ use std::fs::File;
 use anyhow::anyhow;
 use anyhow::Result as anyResult;
 
+use super::error::TrackError;
 use super::Source;
 use super::SourceType;
 
-use crate::error::TrackError;
-
-struct LocalTrack {
+pub struct LocalTrack {
     source: Source,
     file: Option<File>,
 }

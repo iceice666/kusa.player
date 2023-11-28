@@ -1,7 +1,14 @@
-use anyhow::Result as anyResult;
+use anyhow::Result;
+pub mod error;
 mod local;
-
+type AnyResult<T = ()> = anyhow::Result<T>;
 pub type Track = Box<dyn Playable>;
+
+/////////////////////////////////////////
+
+pub use local::LocalTrack;
+
+/////////////////////////////////////////
 
 pub trait Playable {
     // Player will get the uri and play it
@@ -9,7 +16,7 @@ pub trait Playable {
     // Player will run it when `is_available` is false
     fn refresh(&mut self) {}
     // This method will be called to check the playable source is available
-    fn is_available(&self) -> anyResult<()> {
+    fn is_available(&self) -> AnyResult {
         Ok(())
     }
 }
@@ -27,25 +34,4 @@ pub enum SourceType {
 pub struct Source {
     pub(crate) uri: String,
     pub(crate) source_type: SourceType,
-}
-
-pub struct EmptyTrack {
-    source: Source,
-}
-
-impl EmptyTrack {
-    pub fn new() -> EmptyTrack {
-        EmptyTrack {
-            source: Source {
-                uri: String::new(),
-                source_type: SourceType::Empty,
-            },
-        }
-    }
-}
-
-impl Playable for EmptyTrack {
-    fn get_source(&self) -> &Source {
-        &self.source
-    }
 }
