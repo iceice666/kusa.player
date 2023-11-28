@@ -16,7 +16,7 @@ pub struct Player {
     sink: Sink,
 }
 
-pub struct Flag {
+struct Flag {
     exit: bool,
     repeat: bool,
     loop_: bool,
@@ -93,13 +93,18 @@ impl Player {
             return Err(anyhow!(TrackError::SourceIsMissing));
         }
 
-        let track = self.current_track.as_ref().unwrap();
+        let track = self.current_track.as_mut().unwrap();
+
+        match track.check_available() {
+            Ok(_) => {}
+            Err(_) => track.refresh()?,
+        };
 
         let source = track.get_source();
 
         let decoder = SourceDecoder::new(source).await?;
 
-        let duration = Source::total_duration(&decoder);
+        // let duration = Source::total_duration(&decoder);
 
         self.sink.append(decoder);
 

@@ -19,3 +19,4 @@ music/
 !music/test
 
 .idea/
+.venv

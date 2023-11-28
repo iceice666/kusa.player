@@ -1,12 +1,11 @@
 use crate::track::Playable;
 use std::fs::File;
 
+type AnyResult<T = ()> = anyhow::Result<T>;
 use anyhow::anyhow;
-use anyhow::Result as anyResult;
 
 use super::error::TrackError;
 use super::Source;
-use super::SourceType;
 
 pub struct LocalTrack {
     source: Source,
@@ -27,13 +26,15 @@ impl Playable for LocalTrack {
         &self.source
     }
 
-    fn refresh(&mut self) {
+    fn refresh(&mut self) -> AnyResult {
         if self.file.is_none() {
             self.file = File::open(&self.source.uri).ok();
-        }
+        };
+
+        Ok(())
     }
 
-    fn is_available(&self) -> anyResult<()> {
+    fn check_available(&self) -> AnyResult {
         if self.file.is_none() {
             return Err(anyhow!(TrackError::SourceIsMissing));
         }
