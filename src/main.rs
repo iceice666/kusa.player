@@ -1,4 +1,3 @@
-
 use tracing::metadata::LevelFilter;
 use tracing_subscriber::EnvFilter;
 
@@ -11,6 +10,8 @@ async fn main() -> AnyResult {
         .with_line_number(true)
         .with_file(true)
         .init();
+
+  
 
     Ok(())
 }

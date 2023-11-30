@@ -1,11 +1,10 @@
-use crate::track::Playable;
+use super::error::TrackError;
+use super::Playable;
+use super::Source;
 use std::fs::File;
 
 type AnyResult<T = ()> = anyhow::Result<T>;
 use anyhow::anyhow;
-
-use super::error::TrackError;
-use super::Source;
 
 pub struct LocalTrack {
     source: Source,
@@ -41,9 +40,7 @@ impl Playable for LocalTrack {
 
         match self.file.as_ref().unwrap().metadata()?.is_file() {
             true => Ok(()),
-            false => Err(anyhow!(TrackError::SourceIsNotAFile(
-                self.source.uri.to_string()
-            ))),
+            false => Err(anyhow!(TrackError::SourceIsNotAFile)),
         }
     }
 }

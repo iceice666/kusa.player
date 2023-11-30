@@ -4,9 +4,9 @@ use crate::track::error::TrackError;
 use crate::track::Track;
 use anyhow::anyhow;
 use rand::Rng;
-use rodio::{Decoder, Sink, Source};
-use std::{collections::VecDeque, time::Duration};
-use tracing::{error, instrument, warn};
+use rodio::{Decoder, Sink};
+use std::collections::VecDeque;
+use tracing::warn;
 
 type AnyResult<T = ()> = anyhow::Result<T>;
 
@@ -117,6 +117,10 @@ impl Player {
 
     pub fn get_current_track(&self) -> Option<&Track> {
         self.playlist.current_track.as_ref()
+    }
+
+    pub fn get_playlist(&self) -> &VecDeque<Track> {
+        &self.playlist.playlist
     }
 
     /// This is an async function.
