@@ -6,8 +6,8 @@ use thiserror::Error;
 pub enum PlayerError {
     #[error("The playlist is empty!")]
     PlaylistIsEmpty,
-    #[error("The player has exited!")]
-    PlayerHasExited,
+    #[error("The player is exited!")]
+    PlayerIsExited
 }
 
 

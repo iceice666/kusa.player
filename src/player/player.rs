@@ -1,23 +1,22 @@
-use super::error::PlayerError;
+use super::{error::PlayerError, source_decoder::ReaderType};
 use crate::player::SourceDecoder;
 use crate::track::error::TrackError;
 use crate::track::Track;
 use anyhow::anyhow;
 use rand::Rng;
-use rodio::{Sink, Source};
-use std::collections::VecDeque;
+use rodio::{Decoder, Sink, Source};
+use std::{collections::VecDeque, time::Duration};
+use tracing::{error, instrument, warn};
 
 type AnyResult<T = ()> = anyhow::Result<T>;
 
-pub struct Player {
+struct Playlist {
     playlist: VecDeque<Track>,
     current_track: Option<Track>,
     flag: Flag,
-    sink: Sink,
 }
 
 struct Flag {
-    exit: bool,
     repeat: bool,
     loop_: bool,
     random: bool,
@@ -30,19 +29,17 @@ fn new_sink() -> AnyResult<Sink> {
     Ok(sink)
 }
 
-impl Player {
-    pub fn new() -> AnyResult<Player> {
-        Ok(Player {
+impl Playlist {
+    pub fn new() -> Playlist {
+        Playlist {
             playlist: VecDeque::new(),
             current_track: None,
-            sink: new_sink()?,
             flag: Flag {
-                exit: false,
                 repeat: false,
                 loop_: false,
                 random: false,
             },
-        })
+        }
     }
 
     fn update_current_track(&mut self) -> AnyResult {
@@ -78,16 +75,14 @@ impl Player {
         Ok(())
     }
 
-    async fn play_track(&mut self) -> AnyResult {
-        if self.flag.exit {
-            return Err(anyhow!(PlayerError::PlayerHasExited));
-        };
-
+    pub async fn gen_next_source(&mut self) -> AnyResult<Decoder<ReaderType>> {
         if self.playlist.is_empty() {
             return Err(anyhow!(PlayerError::PlaylistIsEmpty));
         }
 
-        self.update_current_track()?;
+        if let Err(v) = self.update_current_track() {
+            warn!("{}", &v);
+        }
 
         if self.current_track.is_none() {
             return Err(anyhow!(TrackError::SourceIsMissing));
@@ -95,32 +90,75 @@ impl Player {
 
         let track = self.current_track.as_mut().unwrap();
 
-        match track.check_available() {
-            Ok(_) => {}
-            Err(_) => track.refresh()?,
+        if let Err(_) = track.check_available() {
+            track.refresh()?
         };
 
         let source = track.get_source();
 
         let decoder = SourceDecoder::new(source).await?;
 
-        // let duration = Source::total_duration(&decoder);
+        Ok(decoder)
+    }
+}
 
-        self.sink.append(decoder);
+pub struct Player {
+    playlist: Playlist,
+    sink: Sink,
+}
 
+impl Player {
+    pub fn new() -> AnyResult<Player> {
+        Ok(Player {
+            playlist: Playlist::new(),
+            sink: new_sink()?,
+        })
+    }
+
+    pub fn get_current_track(&self) -> Option<&Track> {
+        self.playlist.current_track.as_ref()
+    }
+
+    /// This is an async function.
+    ///
+    /// If current sink is paused, resume it.
+    /// Otherwise, play next track.
+    #[inline]
+    pub async fn play(&mut self) -> AnyResult {
+        if self.sink.is_paused() {
+            self.sink.play();
+        } else {
+            let source = self.playlist.gen_next_source().await?;
+            self.sink.append(source);
+        }
         Ok(())
     }
 
-    pub fn play(&self) {
-        self.sink.play();
-    }
-
+    /// Pause current sink
+    #[inline]
     pub fn pause(&self) {
         self.sink.pause();
     }
 
+    /// This is an async function.
+    ///
+    /// Stop current sink, and play next track.
+    #[inline]
+    pub async fn skip(&mut self) -> AnyResult {
+        self.stop();
+        self.play().await?;
+        Ok(())
+    }
+
+    /// Stop current sink
+    #[inline]
+    pub fn stop(&self) {
+        self.sink.stop();
+    }
+
     /// If given speed is None, it return current speed.
     /// If given speed is Some, it will set speed and return None.
+    #[inline]
     pub fn speed(&self, val: Option<f32>) -> Option<f32> {
         match val {
             Some(v) => {
@@ -133,6 +171,7 @@ impl Player {
 
     /// If given volume is None, it return current speed.
     /// If given volume is Some, it will set volume and return None.
+    #[inline]
     pub fn volume(&self, val: Option<f32>) -> Option<f32> {
         match val {
             Some(v) => {
@@ -142,4 +181,8 @@ impl Player {
             None => Some(self.sink.volume()),
         }
     }
+
+    /// Drop self
+    #[inline]
+    pub fn exit(self) {}
 }
