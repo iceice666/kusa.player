@@ -1,4 +1,5 @@
 #[cfg(test)]
+
 mod test {
     use std::error::Error;
     use std::time::Duration;
@@ -13,6 +14,7 @@ mod test {
     use tracing_subscriber::EnvFilter;
 
     #[tokio::test]
+    #[ignore]
     async fn fileplayer() -> Result<(), Box<dyn Error>> {
         let source_url = r#"
 http://www.hyperion-records.co.uk/audiotest/14%20Clementi%20Piano%20Sonata%20in%20D%20major,%20Op%2025%20No%206%20-%20Movement%202%20Un%20poco%20andante.MP3

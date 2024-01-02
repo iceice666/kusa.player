@@ -171,3 +171,24 @@ impl Player {
     #[inline]
     pub fn exit(self) {}
 }
+
+#[cfg(test)]
+mod test {
+    use crate::track::YoutubeTrack;
+
+    use super::Player;
+
+    type AnyResult<T = ()> = anyhow::Result<T>;
+    const VIDEO_URL: &str = "https://www.youtube.com/watch?v=RM22xAjDG-U";
+    #[tokio::test]
+    async fn test_player() -> AnyResult {
+        let mut player = Player::new()?;
+        let track = YoutubeTrack::new(VIDEO_URL.to_string())?;
+        for i in track {
+            player.playlist.push_back(Box::new(i));
+        }
+        player.play().await?;
+
+        Ok(())
+    }
+}
