@@ -10,10 +10,11 @@ use tracing::warn;
 
 type AnyResult<T = ()> = anyhow::Result<T>;
 
-struct Playlist {
-    playlist: VecDeque<Track>,
-    current_track: Option<Track>,
+pub struct Player {
+    pub playlist: VecDeque<Track>,
+    pub current_track: Option<Track>,
     flag: Flag,
+    sink: Sink,
 }
 
 struct Flag {
@@ -29,9 +30,9 @@ fn new_sink() -> AnyResult<Sink> {
     Ok(sink)
 }
 
-impl Playlist {
-    pub fn new() -> Playlist {
-        Playlist {
+impl Player {
+    pub fn new() -> AnyResult<Player> {
+        Ok(Player {
             playlist: VecDeque::new(),
             current_track: None,
             flag: Flag {
@@ -39,7 +40,9 @@ impl Playlist {
                 loop_: false,
                 random: false,
             },
-        }
+
+            sink: new_sink()?,
+        })
     }
 
     fn update_current_track(&mut self) -> AnyResult {
@@ -100,28 +103,6 @@ impl Playlist {
 
         Ok(decoder)
     }
-}
-
-pub struct Player {
-    playlist: Playlist,
-    sink: Sink,
-}
-
-impl Player {
-    pub fn new() -> AnyResult<Player> {
-        Ok(Player {
-            playlist: Playlist::new(),
-            sink: new_sink()?,
-        })
-    }
-
-    pub fn get_current_track(&self) -> Option<&Track> {
-        self.playlist.current_track.as_ref()
-    }
-
-    pub fn get_playlist(&self) -> &VecDeque<Track> {
-        &self.playlist.playlist
-    }
 
     /// This is an async function.
     ///
@@ -132,7 +113,7 @@ impl Player {
         if self.sink.is_paused() {
             self.sink.play();
         } else {
-            let source = self.playlist.gen_next_source().await?;
+            let source = self.gen_next_source().await?;
             self.sink.append(source);
         }
         Ok(())

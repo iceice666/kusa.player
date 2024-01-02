@@ -1,21 +1,26 @@
 use super::error::TrackError;
 use super::Playable;
 use super::Source;
+use super::SourceType;
 use std::fs::File;
 
 type AnyResult<T = ()> = anyhow::Result<T>;
 use anyhow::anyhow;
 
+#[derive(Debug)]
 pub struct LocalTrack {
     source: Source,
     file: Option<File>,
 }
 
 impl LocalTrack {
-    fn new(source: Source) -> LocalTrack {
+    fn new(file_path: &String) -> LocalTrack {
         LocalTrack {
-            file: File::open(&source.uri).ok(),
-            source,
+            file: File::open(file_path).ok(),
+            source: Source {
+                uri: file_path.to_string(),
+                source_type: SourceType::LocalFile,
+            },
         }
     }
 }
@@ -42,5 +47,21 @@ impl Playable for LocalTrack {
             true => Ok(()),
             false => Err(anyhow!(TrackError::SourceIsNotAFile)),
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+
+    use super::LocalTrack;
+
+    #[test]
+    fn teat_parser() {
+        let path: String = "./media/local/test.wav".to_string();
+        let track = LocalTrack::new(&path);
+
+        assert_eq!(path, track.source.uri);
+
+        println!("{:?}", track);
     }
 }
