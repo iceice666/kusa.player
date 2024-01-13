@@ -46,15 +46,23 @@ impl Player {
     }
 
     fn update_current_track(&mut self) -> AnyResult {
-        let prelaod = loop {
-            if self.playlist.is_empty() {
-                break None;
-            }
+        // If `repeat` is set, dont do anything
+        if self.flag.repeat {
+            return Ok(());
+        }
 
+        // If `loop` is set, push curent track back
+        if self.flag.loop_ {
+            if let Some(v) = self.current_track.take() {
+                self.current_track = None;
+                self.playlist.push_back(v)
+            }
+        }
+
+        // Find next valid track
+        let prelaod = loop {
             let t = {
-                if self.flag.repeat {
-                    self.current_track.take()
-                } else if self.flag.random {
+                if self.flag.random {
                     self.playlist
                         .remove(rand::thread_rng().gen_range(0..self.playlist.len()))
                 } else {
@@ -66,12 +74,6 @@ impl Player {
                 break t;
             }
         };
-
-        if self.flag.loop_ {
-            if let Some(v) = self.current_track.take() {
-                self.playlist.push_back(v)
-            }
-        }
 
         self.current_track = prelaod;
 
