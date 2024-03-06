@@ -1,40 +1,33 @@
-pub mod error;
 mod local;
-mod youtube;
+mod simple_player;
+
+use std::{
+    collections::{HashMap, VecDeque},
+    io::{Read, Seek},
+};
+
 type AnyResult<T = ()> = anyhow::Result<T>;
-pub type Track = Box<dyn Playable>;
 
-/////////////////////////////////////////
-pub use local::LocalTrack;
-pub use youtube::YoutubeTrack;
+trait Track {
+    type Source: Seek + Read + Sync + Send;
 
-/////////////////////////////////////////
+    fn refresh(&self) -> AnyResult;
 
-pub trait Playable {
-    // Player will get the uri and play it
-    fn get_source(&self) -> &Source;
-    // Player will run it when `is_available` is false
-    fn refresh(&mut self) -> AnyResult {
-        Ok(())
+    fn get_source(&self) -> AnyResult<Self::Source>;
+
+    fn get_metadata(&self) -> AnyResult<HashMap<String, String>>;
+}
+
+struct TrackList<T>(VecDeque<T>)
+where
+    T: Track,
+    T::Source: Seek + Read + Sync + Send;
+
+impl<T: Track> IntoIterator for TrackList<T> {
+    type Item = T;
+    type IntoIter = std::collections::vec_deque::IntoIter<T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
     }
-    // This method will be called to check the playable source is available
-    fn check_available(&self) -> AnyResult {
-        Ok(())
-    }
 }
-
-#[derive(Debug)]
-pub enum SourceType {
-    LocalFile,
-    RemoteFile,
-    Streamlink,
-    OtherStream,
-    Empty,
-}
-
-#[derive(Debug)]
-pub struct Source {
-    pub(crate) uri: String,
-    pub(crate) source_type: SourceType,
-}
-

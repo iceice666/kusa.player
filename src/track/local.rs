@@ -1,67 +1,85 @@
-use super::error::TrackError;
-use super::Playable;
-use super::Source;
-use super::SourceType;
-use std::fs::File;
+use std::{collections::HashMap, fs::File, io::BufReader, path::Path};
+use tracing::instrument;
+
+use super::Track;
 
 type AnyResult<T = ()> = anyhow::Result<T>;
-use anyhow::anyhow;
 
 #[derive(Debug)]
-pub struct LocalTrack {
-    source: Source,
-    file: Option<File>,
+struct LocalTrack {
+    file_path: String,
 }
 
 impl LocalTrack {
-    fn new(file_path: &String) -> LocalTrack {
+    pub fn new(file_path: &str) -> LocalTrack {
         LocalTrack {
-            file: File::open(file_path).ok(),
-            source: Source {
-                uri: file_path.to_string(),
-                source_type: SourceType::LocalFile,
-            },
+            file_path: file_path.to_string(),
         }
     }
 }
 
-impl Playable for LocalTrack {
-    fn get_source(&self) -> &Source {
-        &self.source
+impl Track for LocalTrack {
+    type Source = BufReader<File>;
+
+    #[instrument]
+    fn refresh(&self) -> AnyResult {
+        let path = Path::new(&self.file_path);
+
+        match path.exists() {
+            true => {
+                // Nothing to do here
+                Ok(())
+            }
+            false => Err(anyhow::anyhow!("File does not exist: {}", self.file_path)),
+        }
     }
 
-    fn refresh(&mut self) -> AnyResult {
-        if self.file.is_none() {
-            self.file = File::open(&self.source.uri).ok();
-        };
+    #[instrument]
+    fn get_source(&self) -> AnyResult<Self::Source> {
+        self.refresh()?;
 
-        Ok(())
+        let path = File::open(&self.file_path)?;
+        let buf = BufReader::new(path);
+
+        Ok(buf)
     }
 
-    fn check_available(&self) -> AnyResult {
-        if self.file.is_none() {
-            return Err(anyhow!(TrackError::SourceIsMissing));
-        }
-
-        match self.file.as_ref().unwrap().metadata()?.is_file() {
-            true => Ok(()),
-            false => Err(anyhow!(TrackError::SourceIsNotAFile)),
-        }
+    #[instrument]
+    fn get_metadata(&self) -> AnyResult<HashMap<String, String>> {
+        Ok(HashMap::new())
     }
 }
 
 #[cfg(test)]
 mod test {
+    use rodio::Decoder;
 
-    use super::LocalTrack;
+    use rodio::{OutputStream, Sink};
 
+    use super::super::simple_player::new_player;
+    use super::*;
+
+    type AnyResult<T = ()> = anyhow::Result<T>;
     #[test]
-    fn teat_parser() {
-        let path: String = "./media/local/test.wav".to_string();
-        let track = LocalTrack::new(&path);
+    fn file_path() -> AnyResult {
+        let track = LocalTrack::new("assets/ViRTUS.m4a");
+        println!("{:#?}", track);
 
-        assert_eq!(path, track.source.uri);
+        let (_stream, stream_handle) = OutputStream::try_default().unwrap();
+        let sink = Sink::try_new(&stream_handle).unwrap();
+        println!("New sink");
 
-        println!("{:?}", track);
+        let dec = Decoder::new(track.get_source()?)?;
+        println!("New decoded source");
+
+        sink.append(dec);
+        println!("Appended to sink");
+
+        sink.play();
+        println!("Playing");
+
+        std::thread::sleep(std::time::Duration::from_secs(60));
+
+        Ok(())
     }
 }
