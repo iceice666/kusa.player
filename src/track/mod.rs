@@ -5,8 +5,8 @@ type AnyResult<T = ()> = anyhow::Result<T>;
 pub type Track = Box<dyn Playable>;
 
 /////////////////////////////////////////
-pub use youtube::YoutubeTrack;
 pub use local::LocalTrack;
+pub use youtube::YoutubeTrack;
 
 /////////////////////////////////////////
 
@@ -37,3 +37,4 @@ pub struct Source {
     pub(crate) uri: String,
     pub(crate) source_type: SourceType,
 }
+

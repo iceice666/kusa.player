@@ -93,7 +93,7 @@ impl Player {
             return Err(anyhow!(TrackError::SourceIsMissing));
         }
 
-        let track = self.current_track.as_mut().unwrap();
+        let mut track = self.current_track.unwrap();
 
         if let Err(_) = track.check_available() {
             track.refresh()?
