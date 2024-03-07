@@ -1,3 +1,4 @@
+use rodio::Decoder;
 use std::{collections::HashMap, fs::File, io::BufReader, path::Path};
 use tracing::instrument;
 
@@ -35,13 +36,14 @@ impl Track for LocalTrack {
     }
 
     #[instrument]
-    fn get_source(&self) -> AnyResult<Self::Source> {
+    fn get_decoded_source(&self) -> AnyResult<Decoder<Self::Source>> {
         self.refresh()?;
 
         let path = File::open(&self.file_path)?;
         let buf = BufReader::new(path);
+        let dec = Decoder::new(buf)?;
 
-        Ok(buf)
+        Ok(dec)
     }
 
     #[instrument]
@@ -56,29 +58,50 @@ mod test {
 
     use rodio::{OutputStream, Sink};
 
-    use super::super::simple_player::new_player;
+    use tracing::info;
+
     use super::*;
 
     type AnyResult<T = ()> = anyhow::Result<T>;
     #[test]
     fn file_path() -> AnyResult {
+        tracing_subscriber::fmt::init();
+
         let track = LocalTrack::new("assets/ViRTUS.m4a");
-        println!("{:#?}", track);
+        info!("{:#?}", track);
 
         let (_stream, stream_handle) = OutputStream::try_default().unwrap();
         let sink = Sink::try_new(&stream_handle).unwrap();
-        println!("New sink");
+        info!("New sink");
 
-        let dec = Decoder::new(track.get_source()?)?;
-        println!("New decoded source");
+        sink.set_volume(0.1);
+
+        let dec = track.get_decoded_source()?;
+        info!("New decoded source");
 
         sink.append(dec);
-        println!("Appended to sink");
+        info!("Appended to sink");
 
         sink.play();
-        println!("Playing");
+        info!("Playing");
 
-        std::thread::sleep(std::time::Duration::from_secs(60));
+        sink.sleep_until_end();
+        info!("End");
+
+        std::thread::sleep(std::time::Duration::from_secs(5));
+        info!("Wait for 5 secs");
+
+        let dec = track.get_decoded_source()?;
+        info!("Prepare to play again");
+
+        sink.append(dec);
+        info!("Appended to sink");
+
+        sink.play();
+        info!("Playing");
+
+        sink.sleep_until_end();
+        info!("End");
 
         Ok(())
     }
