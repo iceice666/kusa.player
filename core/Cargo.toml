@@ -1,0 +1,31 @@
+[package]
+name = "rust-player"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+# audio
+rodio = { version = "0.17.1", features = ["symphonia-all"] }
+symphonia = { version = "0.5.3", features = ["all-codecs"] }
+
+# async
+tokio = { version = "1", features = ["full"] }
+
+# error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+stream-download = "0.4"
+
+# logging
+tracing-subscriber = "0.3"
+tracing = { version = "0.1", features = ["attributes"] }
+
+
+lazy_static = "1.4.0"
+async-trait = "0.1.77"
+
+
+ytdlp-binding = { path = "../ytdl/" }

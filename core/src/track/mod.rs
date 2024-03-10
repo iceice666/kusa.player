@@ -20,3 +20,7 @@ pub(crate) trait Track {
 
     async fn get_decoded_source(&self) -> AnyResult<Decoder<Self::Source>>;
 }
+
+pub trait Metadata {
+    fn metadata(&self) -> AnyResult<&HashMap<String, String>>;
+}

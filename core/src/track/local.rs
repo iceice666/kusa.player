@@ -8,19 +8,21 @@ use std::{
 };
 use tracing::instrument;
 
-use crate::track::Track;
+use crate::track::{Metadata, Track};
 
 type AnyResult<T = ()> = anyhow::Result<T>;
 
 #[derive(Debug)]
 pub(crate) struct LocalTrack {
     file_path: PathBuf,
+    metadata: HashMap<String, String>,
 }
 
 impl LocalTrack {
-    pub fn new(file_path: &str) -> LocalTrack {
+    pub fn new(file_path: impl Into<String>, metadata: HashMap<String, String>) -> LocalTrack {
         LocalTrack {
-            file_path: Path::new(file_path).to_path_buf(),
+            file_path: Path::new(&file_path.into()).to_path_buf(),
+            metadata,
         }
     }
 }
@@ -39,6 +41,12 @@ impl Track for LocalTrack {
     }
 }
 
+impl Metadata for LocalTrack {
+    fn metadata(&self) -> AnyResult<&HashMap<String, String>> {
+        Ok(&self.metadata)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use rodio::{OutputStream, Sink};
@@ -48,11 +56,12 @@ mod test {
     use super::*;
 
     type AnyResult<T = ()> = anyhow::Result<T>;
+
     #[tokio::test]
-    async fn file_path() -> AnyResult {
+    async fn test() -> AnyResult {
         tracing_subscriber::fmt::init();
 
-        let track = LocalTrack::new("assets/ViRTUS.m4a");
+        let track = LocalTrack::new("assets/ViRTUS.m4a", HashMap::new());
         info!("{:#?}", track);
 
         let (_stream, stream_handle) = OutputStream::try_default().unwrap();
